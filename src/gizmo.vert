@@ -14,6 +14,7 @@ layout(set = 2, binding = 0) uniform Transform {
 };
 
 void main() {
+    // TODO: Billboard using a billboard switch flag
     v_Color = Vertex_Color;
     gl_Position = ViewProj * vec4((Model * vec4(Vertex_Position, 1.0)).xyz, 1.0);
 }

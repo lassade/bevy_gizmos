@@ -195,6 +195,9 @@ fn gizmos_setup(
     mut shaders: ResMut<Assets<Shader>>,
     mut render_graph: ResMut<RenderGraph>,
 ) {
+    // TODO: Crazy idea use a Vec4 for point coordinates and use the .w coordinate to
+    // determine the point size, then with compute shader generate a thicc line
+
     gizmos.mesh_empty = meshes.add(gen::wire_empty());
     gizmos.mesh_cube = meshes.add(gen::wire_cube());
     gizmos.mesh_sphere = meshes.add(gen::wire_sphere());
