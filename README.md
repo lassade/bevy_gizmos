@@ -37,7 +37,7 @@ Ideally it shouldn't drop FPS while active, unless it's a user fault.
 
 4. Gizmos for days
 
-Have a lot of pre-made gizmos, enough to cover basic and some extra, to name a few: capsule, spline, arrow_handle;
+Have a lot of pre-made gizmos, enough to cover basic and some extra, to name a few: capsule, spline, arrow_handle, billboards;
 
 ### Other alternatives
 
