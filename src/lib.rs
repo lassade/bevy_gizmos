@@ -73,6 +73,7 @@ impl Default for Gizmo {
     }
 }
 
+/// Use this bundle to spawn persistent gizmos
 #[derive(Default, Bundle)]
 pub struct GizmoBundle {
     pub gizmo: Gizmo,
@@ -146,6 +147,7 @@ pub enum GizmoCommand {
     },
 }
 
+/// Immediate mode gizmos utility
 pub struct GizmosCommandBuffer {
     enabled: bool,
     commands: crossbeam::queue::SegQueue<GizmoCommand>,
@@ -202,7 +204,7 @@ fn gizmos_setup(
 
     gizmos.lines_mesh_handle = {
         let mut mesh = Mesh::new(PrimitiveTopology::LineList);
-        mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, Vec::<[f32; 4]>::with_capacity(32));
+        mesh.set_attribute("Vertex_Color", Vec::<[f32; 4]>::with_capacity(32));
         mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<[f32; 3]>::with_capacity(32));
         mesh.set_indices(Some(Indices::U16(Vec::with_capacity(32))));
         meshes.add(mesh)
@@ -433,10 +435,10 @@ pub struct GizmosPlugin;
 
 impl Plugin for GizmosPlugin {
     fn build(&self, app: &mut AppBuilder) {
-        app.insert_resource(GizmosCommandBuffer::default())
-            .insert_resource(GizmosResources::default())
+        app.add_resource(GizmosCommandBuffer::default())
+            .add_resource(GizmosResources::default())
             .add_startup_system(gizmos_setup.system())
             //.add_stage_after(stage::POST_UPDATE, "gizmos")
-            .add_system_to_stage(CoreStage::PostUpdate, gizmos_update_system.system());
+            .add_system_to_stage(stage::POST_UPDATE, gizmos_update_system.system());
     }
 }

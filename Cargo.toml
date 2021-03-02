@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 # TODO: Limit the crates dependencies (mainly to reduce compile times)
-bevy = { git = "https://github.com/bevyengine/bevy.git", branch = "main" }
+bevy = "0.4"
 
 smallvec = "1.6.1"
 crossbeam = "0.8.0"

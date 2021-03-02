@@ -10,7 +10,7 @@ pub fn wire_cube() -> Mesh {
     color.resize(8, [1.0; 4]);
 
     let mut mesh = Mesh::new(PrimitiveTopology::LineList);
-    mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, color);
+    mesh.set_attribute("Vertex_Color", color);
     mesh.set_attribute(
         Mesh::ATTRIBUTE_POSITION,
         vec![
@@ -70,7 +70,7 @@ pub fn wire_sphere() -> Mesh {
     color.resize(positions.len(), [1.0; 4]);
 
     let mut mesh = Mesh::new(PrimitiveTopology::LineList);
-    mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, color);
+    mesh.set_attribute("Vertex_Color", color);
     mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.set_indices(Some(Indices::U16(indices)));
     mesh
@@ -117,7 +117,7 @@ pub fn wire_cylinder() -> Mesh {
     color.resize(positions.len(), [1.0; 4]);
 
     let mut mesh = Mesh::new(PrimitiveTopology::LineList);
-    mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, color);
+    mesh.set_attribute("Vertex_Color", color);
     mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.set_indices(Some(Indices::U16(indices)));
     mesh
@@ -158,7 +158,7 @@ pub fn wire_hemisphere() -> Mesh {
     color.resize(positions.len(), [1.0; 4]);
 
     let mut mesh = Mesh::new(PrimitiveTopology::LineList);
-    mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, color);
+    mesh.set_attribute("Vertex_Color", color);
     mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.set_indices(Some(Indices::U16(indices)));
     mesh
@@ -191,7 +191,7 @@ pub fn wire_capsule_cap() -> Mesh {
     color.resize(positions.len(), [1.0; 4]);
 
     let mut mesh = Mesh::new(PrimitiveTopology::LineList);
-    mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, color);
+    mesh.set_attribute("Vertex_Color", color);
     mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.set_indices(Some(Indices::U16(indices)));
     mesh
@@ -202,7 +202,7 @@ pub fn wire_empty() -> Mesh {
     color.resize(6, [1.0; 4]);
 
     let mut mesh = Mesh::new(PrimitiveTopology::LineList);
-    mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, color);
+    mesh.set_attribute("Vertex_Color", color);
     mesh.set_attribute(
         Mesh::ATTRIBUTE_POSITION,
         vec![
