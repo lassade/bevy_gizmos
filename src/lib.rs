@@ -6,7 +6,7 @@ use bevy::{
     prelude::*,
     reflect::TypeUuid,
     render::{
-        mesh::Indices,
+        mesh::{Indices, VertexAttributeValues},
         pipeline::{PipelineDescriptor, PrimitiveTopology, RenderPipeline},
         render_graph::{base, RenderGraph, RenderResourcesNode},
         renderer::RenderResources,
@@ -134,7 +134,13 @@ pub enum GizmoCommand {
         color: Color,
     },
     LineList {
-        points: SmallVec<[Vec3; 12]>,
+        // TODO: Having a long set of points will allocate memory every frame,
+        // having multiple `LineList` also allocate memory, because each command
+        // are kept as a SegQueue node that lives in the heap;
+        //
+        // Pick your poison until a better solution come around, just go with
+        // the more convenient solution for your problem;
+        points: SmallVec<[Vec3; 4]>,
         duration: f32,
         color: Color,
     },
@@ -233,6 +239,7 @@ fn gizmos_setup(
 fn gizmos_update_system(
     commands: &mut Commands,
     time: Res<Time>,
+    mut meshes: ResMut<Assets<Mesh>>,
     mut gizmos: ResMut<GizmosResources>,
     mut gizmos_command_buffer: ResMut<GizmosCommandBuffer>,
     gizmos_query: Query<(Entity, &Gizmo, &Children), (Changed<Gizmo>,)>,
@@ -251,8 +258,20 @@ fn gizmos_update_system(
         gizmo_instantiate(commands, gizmos, entity, gizmo);
     }
 
-    // TODO: single frame gizmo commands
     // TODO: Recycle entities to improve performance
+
+    // let lines_mesh = meshes.get_mut(&gizmos.lines_mesh_handle).unwrap();
+
+    // // TODO: Find a better good way getting all the stuff we need before hand (maybe using macros I duno)
+    // if let (
+    //     Some(VertexAttributeValues::Float3(verticies)),
+    //     Some(VertexAttributeValues::Float4(colors)),
+    //     Some(Indices::U32(indices)),
+    // ) = (
+    //     lines_mesh.attribute_mut(Mesh::ATTRIBUTE_COLOR),
+    //     lines_mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION),
+    //     lines_mesh.indices_mut(),
+    // ) {}
 
     // Clear previous gizmos
     for i in (0..gizmos.volatile.len()).rev() {

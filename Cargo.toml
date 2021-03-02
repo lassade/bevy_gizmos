@@ -1,9 +1,12 @@
 [package]
 name = "bevy_contrib_gizmos"
 version = "0.1.0"
-authors = ["lassade"]
+authors = ["Felipe Jorge <felipe.jorge.pereira@gmail.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+# TODO: Limit the crates dependencies (mainly to reduce compile times)
+bevy = { git = "https://github.com/bevyengine/bevy.git", branch = "main" }
+
+smallvec = "1.6.1"
+crossbeam = "0.8.0"
