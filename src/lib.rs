@@ -132,6 +132,7 @@ pub enum GizmoCommand {
         duration: f32,
         color: Color,
     },
+    // TODO: Mesh, rendered with a custom wireframe material
     LineList {
         // TODO: Having a long set of points will allocate memory every frame,
         // having multiple `LineList` also allocate memory, because each command
@@ -146,14 +147,15 @@ pub enum GizmoCommand {
 }
 
 pub struct GizmosCommandBuffer {
-    enabled: bool,
+    /// Control which set of gizmos it will draw
+    pub mask: u32,
     commands: crossbeam::queue::SegQueue<GizmoCommand>,
 }
 
 impl Default for GizmosCommandBuffer {
     fn default() -> Self {
         GizmosCommandBuffer {
-            enabled: true,
+            mask: u32::MAX,
             commands: Default::default(),
         }
     }
@@ -161,10 +163,20 @@ impl Default for GizmosCommandBuffer {
 
 impl GizmosCommandBuffer {
     #[inline]
-    pub fn push(&self, gizmo: GizmoCommand) {
-        if self.enabled {
-            self.commands.push(gizmo);
+    pub fn draw(&self, mask: u32, scope: impl FnOnce(GizmosContext)) -> &Self {
+        if (mask & self.mask) != 0 {
+            (scope)(GizmosContext(self));
         }
+        self
+    }
+}
+
+pub struct GizmosContext<'a>(&'a GizmosCommandBuffer);
+
+impl<'a> GizmosContext<'a> {
+    #[inline]
+    pub fn push(&self, gizmo: GizmoCommand) {
+        self.0.commands.push(gizmo);
     }
 }
 
