@@ -165,18 +165,80 @@ impl GizmosCommandBuffer {
     #[inline]
     pub fn draw(&self, mask: u32, scope: impl FnOnce(GizmosContext)) -> &Self {
         if (mask & self.mask) != 0 {
-            (scope)(GizmosContext(self));
+            (scope)(GizmosContext::new(self));
         }
         self
     }
 }
 
-pub struct GizmosContext<'a>(&'a GizmosCommandBuffer);
+// TODO: Will be wholesome if we could select each gizmos like if they where a button
+
+pub struct GizmosContext<'a> {
+    color: Color,
+    stack: Vec<Transform>,
+    command_buffer: &'a GizmosCommandBuffer,
+}
 
 impl<'a> GizmosContext<'a> {
+    fn new(command_buffer: &'a GizmosCommandBuffer) -> Self {
+        Self {
+            color: Color::WHITE,
+            stack: vec![],
+            command_buffer,
+        }
+    }
+
     #[inline]
-    pub fn push(&self, gizmo: GizmoCommand) {
-        self.0.commands.push(gizmo);
+    pub fn push_matrix(&mut self, transform: Transform) -> &mut Self {
+        self.stack.push(transform);
+        self
+    }
+
+    #[inline]
+    pub fn pop_matrix(&mut self) -> &mut Self {
+        self.stack.pop();
+        self
+    }
+
+    #[inline]
+    pub fn with_color(&mut self, color: Color) -> &mut Self {
+        self.color = color;
+        self
+    }
+
+    pub fn shape(&mut self, shape: GizmoShape, duration: f32) -> &mut Self {
+        self.command(GizmoCommand::Shape {
+            transform: self.stack.last().copied().unwrap_or_default(),
+            shape,
+            duration,
+            color: self.color,
+        })
+    }
+
+    pub fn line_list(
+        &mut self,
+        points: impl Into<SmallVec<[Vec3; 4]>>,
+        duration: f32,
+    ) -> &mut Self {
+        let mut points = points.into();
+
+        // Transform points before pushing the line list
+        if let Some(transform) = self.stack.last() {
+            points.iter_mut().for_each(|p| *p = transform.mul_vec3(*p));
+        }
+
+        self.command(GizmoCommand::LineList {
+            points,
+            duration,
+            color: self.color,
+        })
+    }
+
+    /// **NOTE** Pushes a raw command, ignoring the current transform matrix
+    #[inline]
+    pub fn command(&mut self, gizmo: GizmoCommand) -> &mut Self {
+        self.command_buffer.commands.push(gizmo);
+        self
     }
 }
 
