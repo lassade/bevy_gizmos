@@ -29,6 +29,9 @@ layout(set = 3, binding = 0) uniform GizmoMaterial_color {
 };
 
 void main() {
+    #if GIZMOMATERIAL_UNIT
     // TODO: Fake lighting with a unlit switch flag
+    #endif
+    
     o_Target = v_Color * Color;
 }
