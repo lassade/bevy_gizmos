@@ -4,19 +4,17 @@ use std::ops::Range;
 
 use bevy::{
     prelude::*,
-    reflect::TypeUuid,
     render::{
         mesh::Indices,
-        pipeline::{PipelineDescriptor, PrimitiveTopology, RenderPipeline},
-        render_graph::{base, RenderGraph, RenderResourcesNode},
-        renderer::RenderResources,
-        shader::{Shader, ShaderStage, ShaderStages},
+        pipeline::{PrimitiveTopology, RenderPipeline},
+        render_graph::base,
     },
 };
 use smallvec::SmallVec;
 
 mod gen;
 mod mesh_helper;
+pub mod rendering;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Axis {
@@ -26,12 +24,16 @@ pub enum Axis {
 }
 
 // TODO: Implement reflect
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum GizmoShape {
     /// Similar to blender empty axis
     Empty {
         radius: f32,
     },
+    // Billboard {
+    //     texture: Handle<Texture>,
+    //     size: f32,
+    // },
     Cube {
         size: Vec3,
     },
@@ -52,6 +54,10 @@ pub enum GizmoShape {
         /// Capsule axis orientation
         axis: Axis,
     },
+    // TODO: Use the new Wireframe component from bevy master
+    // Mesh {
+    //     mesh: Handle<Mesh>,
+    // },
 }
 
 /// Persistent gizmo component
@@ -82,16 +88,6 @@ pub struct GizmoBundle {
     pub children: Children,
 }
 
-// NOTE: generated using python `import secrets; secrets.token_hex(8)`
-const GIZMOS_PIPELINE_HANDLE: HandleUntyped =
-    HandleUntyped::weak_from_u64(PipelineDescriptor::TYPE_UUID, 0x936896ad9d35720c_u64);
-
-#[derive(Default, Debug, Reflect, RenderResources)]
-#[reflect(Component)]
-pub struct GizmoMaterial {
-    pub color: Color,
-}
-
 #[derive(Bundle)]
 struct GizmoMeshBundle {
     pub mesh: Handle<Mesh>,
@@ -101,15 +97,14 @@ struct GizmoMeshBundle {
     pub render_pipelines: RenderPipelines,
     pub transform: Transform,
     pub global_transform: GlobalTransform,
-    pub material: GizmoMaterial,
+    pub material: rendering::GizmoMaterial,
 }
 
 impl GizmoMeshBundle {
     fn new(transform: Transform, mesh: Handle<Mesh>, color: Color) -> Self {
         Self {
             render_pipelines: RenderPipelines::from_pipelines(vec![RenderPipeline::new(
-                GIZMOS_PIPELINE_HANDLE.typed(),
-                //bevy::pbr::render_graph::FORWARD_PIPELINE_HANDLE.typed(),
+                rendering::GIZMOS_PIPELINE_HANDLE.typed(),
             )]),
             mesh,
             visible: Default::default(),
@@ -117,7 +112,7 @@ impl GizmoMeshBundle {
             draw: Default::default(),
             transform,
             global_transform: Default::default(),
-            material: GizmoMaterial { color },
+            material: color.into(),
         }
     }
 }
@@ -268,9 +263,6 @@ fn gizmos_setup(
     commands: &mut Commands,
     mut gizmos: ResMut<GizmosResources>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut pipelines: ResMut<Assets<PipelineDescriptor>>,
-    mut shaders: ResMut<Assets<Shader>>,
-    mut render_graph: ResMut<RenderGraph>,
 ) {
     gizmos.mesh_empty = meshes.add(gen::wire_empty());
     gizmos.mesh_cube = meshes.add(gen::wire_cube());
@@ -296,31 +288,6 @@ fn gizmos_setup(
             Color::WHITE,
         ))
         .current_entity();
-
-    // Pipeline setup
-
-    let gizmo_pipeline = PipelineDescriptor::default_config(ShaderStages {
-        vertex: shaders.add(Shader::from_glsl(
-            ShaderStage::Vertex,
-            include_str!("gizmo.vert"),
-        )),
-        fragment: Some(shaders.add(Shader::from_glsl(
-            ShaderStage::Fragment,
-            include_str!("gizmo.frag"),
-        ))),
-    });
-
-    // gizmo_pipeline.depth_stencil = None; // No depth
-
-    pipelines.set_untracked(GIZMOS_PIPELINE_HANDLE, gizmo_pipeline);
-
-    render_graph.add_system_node(
-        "gizmo_color",
-        RenderResourcesNode::<GizmoMaterial>::new(true),
-    );
-    render_graph
-        .add_node_edge("gizmo_color", base::node::MAIN_PASS)
-        .unwrap();
 }
 
 fn gizmos_update_system(
@@ -359,10 +326,14 @@ fn gizmos_update_system(
                 GizmoVolatile::Line(vert, index) => {
                     // Remove lines
                     let edit = lines_mesh_edit.get_or_insert_with(|| {
+                        // Lazily fetch a mutable mesh reference to avoid triggering an update every frame
                         let lines_mesh = meshes.get_mut(&gizmos.lines_mesh_handle).unwrap();
-                        mesh_helper::MeshEditXC::new(lines_mesh)
+                        // SAFETY: Will be only be fetched once for
+                        let lines_mesh = unsafe { &mut *(lines_mesh as *mut _) };
+                        mesh_helper::MeshEditXC::from(lines_mesh)
                     });
 
+                    // TODO: Find a more efficient way of doing this, maybe a separated lines_mesh for only single frame lines
                     // ? NOTE: This algorithm will reduce the amount of memory that needs to br sended over to the GPU
                     // ? and also reduce memory fragmentation, although having to move quite a bit of data around
                     // Remove vertex attributes
@@ -371,6 +342,7 @@ fn gizmos_update_system(
 
                     // Remove indexes
                     for i in index.end..edit.indices.len() {
+                        debug_assert!(edit.indices[i] >= index.end as u32);
                         edit.indices[i - index.start] = edit.indices[i] - index.start as u32;
                     }
                     edit.indices
@@ -414,7 +386,9 @@ fn gizmos_update_system(
                 let edit = lines_mesh_edit.get_or_insert_with(|| {
                     // Lazily fetch a mutable mesh reference to avoid triggering an update every frame
                     let lines_mesh = meshes.get_mut(&gizmos.lines_mesh_handle).unwrap();
-                    mesh_helper::MeshEditXC::new(lines_mesh)
+                    // SAFETY: Will be only be fetched once for
+                    let lines_mesh = unsafe { &mut *(lines_mesh as *mut _) };
+                    mesh_helper::MeshEditXC::from(lines_mesh)
                 });
 
                 let v = edit.vertices.len();
@@ -577,6 +551,7 @@ impl Plugin for GizmosPlugin {
         app.insert_resource(GizmosCommandBuffer::default())
             .insert_resource(GizmosResources::default())
             .add_startup_system(gizmos_setup.system())
+            .add_startup_system(rendering::gizmos_pipeline_setup.system())
             //.add_stage_after(stage::POST_UPDATE, "gizmos")
             .add_system_to_stage(CoreStage::PostUpdate, gizmos_update_system.system());
     }

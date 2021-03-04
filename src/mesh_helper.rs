@@ -43,10 +43,11 @@ pub struct MeshEditXC<'a> {
     pub vertices: &'a mut Vec<[f32; 3]>,
     pub colors: &'a mut Vec<[f32; 4]>,
     pub indices: &'a mut Vec<u32>,
+    mesh: &'a mut Mesh,
 }
 
-impl<'a> MeshEditXC<'a> {
-    pub fn new(mesh: &mut Mesh) -> Self {
+impl<'a> From<&'a mut Mesh> for MeshEditXC<'a> {
+    fn from(mesh: &'a mut Mesh) -> Self {
         unsafe {
             Self {
                 vertices: mesh_attr!(
@@ -60,7 +61,28 @@ impl<'a> MeshEditXC<'a> {
                 } else {
                     panic!("wrong mesh indices format")
                 },
+                mesh,
             }
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    // TODO: Test for fail compilation
+    //use super::*;
+
+    // //  This test shouldn't compile
+    // #[test]
+    // fn is_safe() {
+    //     let mut mesh = Mesh::default();
+
+    //     let edit = MeshEditXC::from(&mut mesh);
+    //     std::mem::drop(mesh);
+
+    //     let temp = edit.vertices;
+
+    //     println!("{:?}", temp[0]);
+    //     std::mem::drop(temp);
+    // }
 }
