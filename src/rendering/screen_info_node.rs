@@ -87,7 +87,7 @@ impl Node for ScreenInfoNode {
             let w = window.physical_width() as f32;
             let h = window.physical_height() as f32;
             let aspect = w / h;
-            let screen_info: [f32; 4] = [w, h, aspect, 1.0 / aspect];
+            let screen_info: [f32; 4] = [w, h, 1.0 / aspect, aspect];
 
             render_resource_context.map_buffer(staging_buffer, BufferMapMode::Write);
             render_resource_context.write_mapped_buffer(

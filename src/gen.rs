@@ -220,3 +220,20 @@ pub fn wire_empty() -> Mesh {
     mesh.set_indices(Some(Indices::U16(vec![0, 1, 2, 3, 4, 5])));
     mesh
 }
+
+pub fn billboard() -> Mesh {
+    let mut mesh = Mesh::from(shape::Quad::new(Vec2::one()));
+
+    // Add vertex color (required by shader)
+    mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, {
+        let mut color: Vec<[f32; 4]> = vec![];
+        color.resize(4, [1.0; 4]);
+        color
+    });
+
+    mesh
+}
+
+pub fn wire_circle() -> Mesh {
+    todo!()
+}

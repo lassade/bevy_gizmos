@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::ops::Range;
+use std::{fmt::Debug, ops::Range};
 
 use bevy::{
     prelude::*,
@@ -8,6 +8,7 @@ use bevy::{
         mesh::Indices,
         pipeline::{PrimitiveTopology, RenderPipeline},
         render_graph::base,
+        shader,
     },
 };
 use smallvec::SmallVec;
@@ -15,6 +16,8 @@ use smallvec::SmallVec;
 mod gen;
 mod mesh_helper;
 pub mod rendering;
+
+pub use rendering::GizmoMaterial;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Axis {
@@ -30,10 +33,10 @@ pub enum GizmoShape {
     Empty {
         radius: f32,
     },
-    // Billboard {
-    //     texture: Handle<Texture>,
-    //     size: f32,
-    // },
+    Billboard {
+        texture: Option<Handle<Texture>>,
+        size: f32,
+    },
     Cube {
         size: Vec3,
     },
@@ -97,11 +100,11 @@ struct GizmoMeshBundle {
     pub render_pipelines: RenderPipelines,
     pub transform: Transform,
     pub global_transform: GlobalTransform,
-    pub material: rendering::GizmoMaterial,
+    pub material: GizmoMaterial,
 }
 
 impl GizmoMeshBundle {
-    fn new(transform: Transform, mesh: Handle<Mesh>, color: Color) -> Self {
+    fn new(transform: Transform, mesh: Handle<Mesh>, material: impl Into<GizmoMaterial>) -> Self {
         Self {
             render_pipelines: RenderPipelines::from_pipelines(vec![RenderPipeline::new(
                 rendering::GIZMOS_PIPELINE_HANDLE.typed(),
@@ -112,7 +115,7 @@ impl GizmoMeshBundle {
             draw: Default::default(),
             transform,
             global_transform: Default::default(),
-            material: color.into(),
+            material: material.into(),
         }
     }
 }
@@ -247,6 +250,7 @@ enum GizmoVolatile {
 #[derive(Default)]
 struct GizmosResources {
     mesh_empty: Handle<Mesh>,
+    mesh_billboard: Handle<Mesh>,
     mesh_cube: Handle<Mesh>,
     mesh_sphere: Handle<Mesh>,
     mesh_hemisphere: Handle<Mesh>,
@@ -265,6 +269,7 @@ fn gizmos_setup(
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
     gizmos.mesh_empty = meshes.add(gen::wire_empty());
+    gizmos.mesh_billboard = meshes.add(gen::billboard());
     gizmos.mesh_cube = meshes.add(gen::wire_cube());
     gizmos.mesh_sphere = meshes.add(gen::wire_sphere());
     gizmos.mesh_hemisphere = meshes.add(gen::wire_hemisphere());
@@ -431,13 +436,28 @@ fn gizmo_instantiate(
     parent: Entity,
     gizmo: &Gizmo,
 ) {
-    match gizmo.shape {
+    match gizmo.shape.clone() {
         GizmoShape::Empty { radius } => {
             commands
                 .spawn(GizmoMeshBundle::new(
                     Transform::from_scale(Vec3::splat(radius)),
                     gizmos.mesh_empty.clone(),
                     gizmo.color,
+                ))
+                .with(Parent(parent));
+        }
+        GizmoShape::Billboard { texture, size } => {
+            commands
+                .spawn(GizmoMeshBundle::new(
+                    Transform::default(),
+                    gizmos.mesh_billboard.clone(),
+                    GizmoMaterial {
+                        color: gizmo.color,
+                        texture,
+                        billboard: true,
+                        billboard_size: size,
+                        ..Default::default()
+                    },
                 ))
                 .with(Parent(parent));
         }
@@ -548,6 +568,11 @@ pub struct GizmosPlugin;
 
 impl Plugin for GizmosPlugin {
     fn build(&self, app: &mut AppBuilder) {
+        app.register_type::<GizmoMaterial>().add_system_to_stage(
+            CoreStage::PostUpdate,
+            shader::shader_defs_system::<GizmoMaterial>.system(),
+        );
+
         app.insert_resource(GizmosCommandBuffer::default())
             .insert_resource(GizmosResources::default())
             .add_startup_system(gizmos_setup.system())

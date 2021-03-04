@@ -19,15 +19,15 @@ pub const GIZMOS_PIPELINE_HANDLE: HandleUntyped =
 #[reflect(Component)]
 pub struct GizmoMaterial {
     pub color: Color,
+
     #[shader_def]
     #[render_resources(ignore)]
     pub unlit: bool,
-    // #[shader_def]
-    // #[render_resources(ignore)]
-    // pub textured: bool,
-    // pub texture: Handle<Texture>,
 
-    //
+    #[shader_def]
+    #[reflect(ignore)]
+    pub texture: Option<Handle<Texture>>,
+
     #[shader_def]
     #[render_resources(ignore)]
     pub billboard: bool,
@@ -39,9 +39,9 @@ impl Default for GizmoMaterial {
         Self {
             color: Color::WHITE,
             unlit: true,
-            //textured: false,
+            texture: None,
             billboard: false,
-            billboard_size: 0.2,
+            billboard_size: 0.5,
         }
     }
 }
@@ -78,11 +78,11 @@ pub(crate) fn gizmos_pipeline_setup(
     pipelines.set_untracked(GIZMOS_PIPELINE_HANDLE, gizmo_pipeline);
 
     render_graph.add_system_node(
-        "gizmo_color",
+        "gizmo_material",
         RenderResourcesNode::<GizmoMaterial>::new(true),
     );
     render_graph
-        .add_node_edge("gizmo_color", base::node::MAIN_PASS)
+        .add_node_edge("gizmo_material", base::node::MAIN_PASS)
         .unwrap();
 
     render_graph.add_node(
