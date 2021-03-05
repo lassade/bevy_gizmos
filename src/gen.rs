@@ -82,7 +82,7 @@ pub fn wire_cylinder() -> Mesh {
 
     // Top
     for i in 0..16u16 {
-        let t = (i as f32) * (2.0 / 15.0);
+        let t = (i as f32) * (2.0 / 16.0);
         let (y, x) = f32::sin_cos(t * PI);
         positions.push([x, 0.5, y]);
         if i < 15 {

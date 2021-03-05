@@ -4,56 +4,17 @@ use bevy::{
     render::{
         pipeline::PipelineDescriptor,
         render_graph::{base, RenderGraph, RenderResourcesNode},
-        renderer::RenderResources,
-        shader::{Shader, ShaderDefs, ShaderStage, ShaderStages},
+        shader::{Shader, ShaderStage, ShaderStages},
     },
 };
 
 mod screen_info_node;
 
+use crate::GizmoMaterial;
+
 // NOTE: generated using python `import secrets; secrets.token_hex(8)`
 pub const GIZMOS_PIPELINE_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(PipelineDescriptor::TYPE_UUID, 0x936896ad9d35720c_u64);
-
-#[derive(Debug, Reflect, RenderResources, ShaderDefs)]
-#[reflect(Component)]
-pub struct GizmoMaterial {
-    pub color: Color,
-
-    #[shader_def]
-    #[render_resources(ignore)]
-    pub unlit: bool,
-
-    #[shader_def]
-    #[reflect(ignore)]
-    pub texture: Option<Handle<Texture>>,
-
-    #[shader_def]
-    #[render_resources(ignore)]
-    pub billboard: bool,
-    pub billboard_size: f32,
-}
-
-impl Default for GizmoMaterial {
-    fn default() -> Self {
-        Self {
-            color: Color::WHITE,
-            unlit: true,
-            texture: None,
-            billboard: false,
-            billboard_size: 0.5,
-        }
-    }
-}
-
-impl From<Color> for GizmoMaterial {
-    fn from(color: Color) -> Self {
-        GizmoMaterial {
-            color,
-            ..Default::default()
-        }
-    }
-}
 
 pub(crate) fn gizmos_pipeline_setup(
     mut pipelines: ResMut<Assets<PipelineDescriptor>>,
@@ -72,6 +33,8 @@ pub(crate) fn gizmos_pipeline_setup(
             include_str!("shaders/gizmo.frag"),
         ))),
     });
+
+    // TODO: Support transparency
 
     // gizmo_pipeline.depth_stencil = None; // No depth
 

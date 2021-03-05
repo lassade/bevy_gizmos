@@ -14,10 +14,11 @@ use bevy::{
 use smallvec::SmallVec;
 
 mod gen;
+mod material;
 mod mesh_helper;
-pub mod rendering;
+mod render_graph;
 
-pub use rendering::GizmoMaterial;
+pub use material::GizmoMaterial;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Axis {
@@ -57,10 +58,9 @@ pub enum GizmoShape {
         /// Capsule axis orientation
         axis: Axis,
     },
-    // TODO: Use the new Wireframe component from bevy master
-    // Mesh {
-    //     mesh: Handle<Mesh>,
-    // },
+    Mesh {
+        mesh: Handle<Mesh>,
+    },
 }
 
 /// Persistent gizmo component
@@ -107,7 +107,7 @@ impl GizmoMeshBundle {
     fn new(transform: Transform, mesh: Handle<Mesh>, material: impl Into<GizmoMaterial>) -> Self {
         Self {
             render_pipelines: RenderPipelines::from_pipelines(vec![RenderPipeline::new(
-                rendering::GIZMOS_PIPELINE_HANDLE.typed(),
+                render_graph::GIZMOS_PIPELINE_HANDLE.typed(),
             )]),
             mesh,
             visible: Default::default(),
@@ -558,6 +558,10 @@ fn gizmo_instantiate(
                 ))
                 .with(Parent(parent));
         }
+        GizmoShape::Mesh { mesh } => {
+            // Wireframe component ?!?
+            todo!()
+        }
     };
 }
 
@@ -576,7 +580,7 @@ impl Plugin for GizmosPlugin {
         app.insert_resource(GizmosCommandBuffer::default())
             .insert_resource(GizmosResources::default())
             .add_startup_system(gizmos_setup.system())
-            .add_startup_system(rendering::gizmos_pipeline_setup.system())
+            .add_startup_system(render_graph::gizmos_pipeline_setup.system())
             //.add_stage_after(stage::POST_UPDATE, "gizmos")
             .add_system_to_stage(CoreStage::PostUpdate, gizmos_update_system.system());
     }
