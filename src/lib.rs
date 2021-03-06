@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::{fmt::Debug, ops::Range};
+use std::{f32::consts::PI, fmt::Debug, ops::Range};
 
 use bevy::{
     prelude::*,
@@ -114,7 +114,10 @@ impl Default for GizmoMeshBundle {
                 render_graph::GIZMOS_PIPELINE_HANDLE.typed(),
             )]),
             mesh: Default::default(),
-            visible: Default::default(),
+            visible: Visible {
+                is_visible: true,
+                is_transparent: true,
+            },
             main_pass: Default::default(),
             draw: Default::default(),
             transform: Default::default(),
@@ -649,21 +652,27 @@ fn gizmo_instantiate(
             let mut bottom = Vec3::zero();
 
             let offset = height * 0.5;
-            let rotation = match axis {
+            let (rotation, rotation_mirrored) = match axis {
                 Axis::X => {
                     top[0] = -offset;
                     bottom[0] = offset;
-                    Quat::from_rotation_z(std::f32::consts::PI * 0.5)
+                    (
+                        Quat::from_rotation_z(PI * 0.5),
+                        Quat::from_rotation_ypr(PI, 0.0, PI * 0.5),
+                    )
                 }
                 Axis::Y => {
                     top[1] = offset;
                     bottom[1] = -offset;
-                    Quat::default()
+                    (Quat::default(), Quat::from_rotation_x(PI))
                 }
                 Axis::Z => {
                     top[2] = offset;
                     bottom[2] = -offset;
-                    Quat::from_rotation_x(std::f32::consts::PI * 0.5)
+                    (
+                        Quat::from_rotation_x(PI * 0.5),
+                        Quat::from_rotation_ypr(PI * 0.5, 0.0, PI),
+                    )
                 }
             };
 
@@ -695,8 +704,8 @@ fn gizmo_instantiate(
                 .spawn(GizmoMeshBundle {
                     transform: Transform {
                         translation: bottom,
-                        rotation,
-                        scale: Vec3::splat(-radius),
+                        rotation: rotation_mirrored,
+                        scale: Vec3::splat(radius),
                     },
                     mesh: gizmos.mesh_capsule_cap.clone(),
                     material,
