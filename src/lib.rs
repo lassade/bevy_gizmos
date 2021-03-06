@@ -4,20 +4,17 @@ use std::{fmt::Debug, ops::Range};
 
 use bevy::{
     prelude::*,
-    render::{
-        mesh::Indices,
-        pipeline::{PrimitiveTopology, RenderPipeline},
-        render_graph::base,
-        shader,
-    },
+    render::{pipeline::RenderPipeline, render_graph::base, shader},
 };
 use smallvec::SmallVec;
 
 mod gen;
+mod line;
 mod material;
 mod mesh_helper;
 mod render_graph;
 
+use line::Line;
 pub use material::GizmoMaterial;
 
 #[derive(Debug, Copy, Clone)]
@@ -27,7 +24,6 @@ pub enum Axis {
     Z,
 }
 
-// TODO: Implement reflect
 #[derive(Debug, Clone)]
 pub enum GizmoShape {
     /// Similar to blender empty axis
@@ -63,12 +59,18 @@ pub enum GizmoShape {
     },
 }
 
-/// Persistent gizmo component
+/// Persistent gizmo component;
+///
+/// **NOTE** Removing this component won't remove the gizmos, thus
+/// use the `GizmoBundle` to spawn a new gizmo as a child of the entity you want
+/// to put the gizmo on;
 #[derive(Debug, Reflect)]
 #[reflect(Component)]
 pub struct Gizmo {
     #[reflect(ignore)]
     pub shape: GizmoShape,
+    pub wireframe: Color,
+    /// **NOTE** Not every gizmo has a filled shape, so this might be ignored
     pub color: Color,
 }
 
@@ -78,7 +80,8 @@ impl Default for Gizmo {
             shape: GizmoShape::Cube {
                 size: Vec3::new(1.0, 1.0, 1.0),
             },
-            color: Color::WHITE,
+            wireframe: Color::WHITE,
+            color: Color::rgba_linear(0.0, 0.0, 0.0, 0.0),
         }
     }
 }
@@ -91,8 +94,9 @@ pub struct GizmoBundle {
     pub children: Children,
 }
 
+/// The gizmo may use multiple [`GizmosMeshBundles`] to render it self
 #[derive(Bundle)]
-struct GizmoMeshBundle {
+pub(crate) struct GizmoMeshBundle {
     pub mesh: Handle<Mesh>,
     pub main_pass: base::MainPass, // TODO: GizmoPass
     pub draw: Draw,
@@ -103,19 +107,19 @@ struct GizmoMeshBundle {
     pub material: GizmoMaterial,
 }
 
-impl GizmoMeshBundle {
-    fn new(transform: Transform, mesh: Handle<Mesh>, material: impl Into<GizmoMaterial>) -> Self {
+impl Default for GizmoMeshBundle {
+    fn default() -> Self {
         Self {
             render_pipelines: RenderPipelines::from_pipelines(vec![RenderPipeline::new(
                 render_graph::GIZMOS_PIPELINE_HANDLE.typed(),
             )]),
-            mesh,
+            mesh: Default::default(),
             visible: Default::default(),
             main_pass: Default::default(),
             draw: Default::default(),
-            transform,
+            transform: Default::default(),
             global_transform: Default::default(),
-            material: material.into(),
+            material: Default::default(),
         }
     }
 }
@@ -129,6 +133,7 @@ pub enum GizmoCommand {
         shape: GizmoShape,
         duration: f32,
         color: Color,
+        wireframe: Color,
     },
     // TODO: Mesh, rendered with a custom wireframe material
     LineList {
@@ -173,6 +178,7 @@ impl GizmosCommandBuffer {
 
 pub struct GizmosContext<'a> {
     color: Color,
+    wireframe: Color,
     stack: Vec<Transform>,
     command_buffer: &'a GizmosCommandBuffer,
 }
@@ -180,7 +186,8 @@ pub struct GizmosContext<'a> {
 impl<'a> GizmosContext<'a> {
     fn new(command_buffer: &'a GizmosCommandBuffer) -> Self {
         Self {
-            color: Color::WHITE,
+            color: Color::rgba_linear(0.0, 0.0, 0.0, 0.0),
+            wireframe: Color::WHITE,
             stack: vec![],
             command_buffer,
         }
@@ -204,11 +211,30 @@ impl<'a> GizmosContext<'a> {
         self
     }
 
+    #[inline]
+    pub fn no_color(&mut self) -> &mut Self {
+        self.color = Color::rgba_linear(0.0, 0.0, 0.0, 0.0);
+        self
+    }
+
+    #[inline]
+    pub fn with_wireframe(&mut self, color: Color) -> &mut Self {
+        self.wireframe = color;
+        self
+    }
+
+    #[inline]
+    pub fn no_wireframe(&mut self) -> &mut Self {
+        self.wireframe = Color::rgba_linear(0.0, 0.0, 0.0, 0.0);
+        self
+    }
+
     pub fn shape(&mut self, shape: GizmoShape, duration: f32) -> &mut Self {
         self.command(GizmoCommand::Shape {
             transform: self.stack.last().copied().unwrap_or_default(),
             shape,
             duration,
+            wireframe: self.wireframe,
             color: self.color,
         })
     }
@@ -242,13 +268,10 @@ impl<'a> GizmosContext<'a> {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-enum GizmoVolatile {
-    Line(Range<usize>, Range<usize>),
-    Shape(Entity),
-}
-
 #[derive(Default)]
-struct GizmosResources {
+struct GizmosMeshes {
+    /// Flag this meshes as wireframe
+    wireframe: bool,
     mesh_empty: Handle<Mesh>,
     mesh_billboard: Handle<Mesh>,
     mesh_cube: Handle<Mesh>,
@@ -256,11 +279,26 @@ struct GizmosResources {
     mesh_hemisphere: Handle<Mesh>,
     mesh_cylinder: Handle<Mesh>,
     mesh_capsule_cap: Handle<Mesh>, // Similar to hemisphere but with less redundant lines
+}
+
+#[derive(Default)]
+struct GizmosResources {
+    meshes: GizmosMeshes,
+    meshes_wireframe: GizmosMeshes,
+    // TODO: Hashmap of instantiated gizmos to later delete them?
+    // instances: HashMap<Entity, SmallVec<[Entity; 4]>>,
 
     // Gizmos command buffer
-    volatile: Vec<(f32, GizmoVolatile)>,
-    lines_entity: Option<Entity>,
-    lines_mesh_handle: Handle<Mesh>,
+    /// Volatile gizmos shapes
+    shapes_volatile_tracker: Vec<(f32, Entity)>,
+    /// Not quite immediate mode but they will disappear eventually,
+    /// it's particular hard to manage these lines because they share a single
+    /// mesh
+    lines_volatile: Line,
+    lines_volatile_tracker: Vec<(f32, Range<usize>, Range<usize>)>,
+    /// This set of lines will only be active once per frame which
+    /// make their management way cheaper;
+    lines_immediate: Line,
 }
 
 fn gizmos_setup(
@@ -268,31 +306,24 @@ fn gizmos_setup(
     mut gizmos: ResMut<GizmosResources>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
-    gizmos.mesh_empty = meshes.add(gen::wire_empty());
-    gizmos.mesh_billboard = meshes.add(gen::billboard());
-    gizmos.mesh_cube = meshes.add(gen::wire_cube());
-    gizmos.mesh_sphere = meshes.add(gen::wire_sphere());
-    gizmos.mesh_hemisphere = meshes.add(gen::wire_hemisphere());
-    gizmos.mesh_cylinder = meshes.add(gen::wire_cylinder());
-    gizmos.mesh_capsule_cap = meshes.add(gen::wire_capsule_cap());
+    let meshes = &mut *meshes;
 
-    // TODO: Partition between multiple meshes when have culling in place
+    // TODO: Other meshes
+
+    gizmos.meshes_wireframe.wireframe = true;
+    gizmos.meshes_wireframe.mesh_empty = meshes.add(gen::wire_empty());
+    gizmos.meshes_wireframe.mesh_billboard = meshes.add(gen::billboard());
+    gizmos.meshes_wireframe.mesh_cube = meshes.add(gen::wire_cube());
+    gizmos.meshes_wireframe.mesh_sphere = meshes.add(gen::wire_sphere());
+    gizmos.meshes_wireframe.mesh_hemisphere = meshes.add(gen::wire_hemisphere());
+    gizmos.meshes_wireframe.mesh_cylinder = meshes.add(gen::wire_cylinder());
+    gizmos.meshes_wireframe.mesh_capsule_cap = meshes.add(gen::wire_capsule_cap());
+
+    gizmos.meshes.mesh_billboard = gizmos.meshes_wireframe.mesh_billboard.clone(); // Billboard is the same for both
+
     // Shared line mesh
-    gizmos.lines_mesh_handle = {
-        let mut mesh = Mesh::new(PrimitiveTopology::LineList);
-        mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, Vec::<[f32; 4]>::with_capacity(32));
-        mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<[f32; 3]>::with_capacity(32));
-        mesh.set_indices(Some(Indices::U16(Vec::with_capacity(32))));
-        meshes.add(mesh)
-    };
-
-    gizmos.lines_entity = commands
-        .spawn(GizmoMeshBundle::new(
-            Transform::default(),
-            gizmos.lines_mesh_handle.clone(),
-            Color::WHITE,
-        ))
-        .current_entity();
+    gizmos.lines_volatile = Line::new(commands, meshes);
+    gizmos.lines_immediate = Line::new(commands, meshes);
 }
 
 fn gizmos_update_system(
@@ -302,10 +333,20 @@ fn gizmos_update_system(
     mut gizmos: ResMut<GizmosResources>,
     gizmos_command_buffer: ResMut<GizmosCommandBuffer>,
     gizmos_query: Query<(Entity, &Gizmo, &Children), (Changed<Gizmo>,)>,
+    // gizmos_removed_query: Query<Entity, Without<Gizmo>>,
 ) {
-    // TODO: Disable gizmos
+    // TODO: Deal with removed components
+    // // Despawns removed gizmos
+    // for entity in gizmos_removed_query.removed::<remove() {
+    //     if let Some(instances) = gizmos.instances.remove(entity) {
+    //         for entity in instances {
+    //             commands.despawn(entity);
+    //         }
+    //     }
+    // }
 
     let gizmos = &mut *gizmos;
+    let meshes = &mut *meshes;
 
     // Manage gizmos components by adding entities to render them
     for (entity, gizmo, children) in &mut gizmos_query.iter() {
@@ -314,48 +355,98 @@ fn gizmos_update_system(
             commands.despawn(entity);
         });
 
-        gizmo_instantiate(commands, gizmos, entity, gizmo);
+        if gizmo.wireframe.a() > f32::EPSILON {
+            gizmo_instantiate(
+                commands,
+                &gizmos.meshes_wireframe,
+                entity,
+                gizmo.shape.clone(),
+                gizmo.wireframe,
+            );
+        }
+
+        if gizmo.color.a() > f32::EPSILON {
+            gizmo_instantiate(
+                commands,
+                &gizmos.meshes,
+                entity,
+                gizmo.shape.clone(),
+                gizmo.color,
+            );
+        }
     }
 
+    // Manage previous volatile gizmos
+
+    // Manage gizmos shapes
     // TODO: Recycle entities to improve performance
-
-    let mut lines_mesh_edit: Option<mesh_helper::MeshEditXC> = None;
-
-    // Clear previous gizmos
-    for i in (0..gizmos.volatile.len()).rev() {
-        let (time_left, _) = &mut gizmos.volatile[i];
+    for i in (0..gizmos.shapes_volatile_tracker.len()).rev() {
+        let (time_left, _) = &mut gizmos.shapes_volatile_tracker[i];
 
         if *time_left < 0.0 {
-            let (_, item) = gizmos.volatile.remove(i);
-            match item {
-                GizmoVolatile::Line(vert, index) => {
-                    // Remove lines
-                    let edit = lines_mesh_edit.get_or_insert_with(|| {
-                        // Lazily fetch a mutable mesh reference to avoid triggering an update every frame
-                        let lines_mesh = meshes.get_mut(&gizmos.lines_mesh_handle).unwrap();
-                        // SAFETY: Will be only be fetched once for
-                        let lines_mesh = unsafe { &mut *(lines_mesh as *mut _) };
-                        mesh_helper::MeshEditXC::from(lines_mesh)
-                    });
+            let (_, entity) = gizmos.shapes_volatile_tracker.remove(i);
+            commands.despawn_recursive(entity);
+        } else {
+            *time_left -= time.delta_seconds();
+        }
+    }
 
-                    // TODO: Find a more efficient way of doing this, maybe a separated lines_mesh for only single frame lines
-                    // ? NOTE: This algorithm will reduce the amount of memory that needs to br sended over to the GPU
-                    // ? and also reduce memory fragmentation, although having to move quite a bit of data around
-                    // Remove vertex attributes
-                    edit.vertices.drain(vert.start..vert.end);
-                    edit.colors.drain(vert.start..vert.end);
+    let mut lines_immediate_edit: mesh_helper::MeshEditXC = {
+        // SAFETY: This mesh is fetched only here,
+        // further more the `meshes` won't mutate only his meshes
+        let meshes = unsafe { &mut *(meshes as *mut _) };
+        gizmos.lines_immediate.edit(meshes)
+    };
 
-                    // Remove indexes
-                    for i in index.end..edit.indices.len() {
-                        debug_assert!(edit.indices[i] >= index.end as u32);
-                        edit.indices[i - index.start] = edit.indices[i] - index.start as u32;
-                    }
-                    edit.indices
-                        .resize_with(edit.indices.len() - index.start, || unreachable!());
+    // Clear right away the immediate mode lines since they are just one frame
+    lines_immediate_edit.vertices.clear();
+    lines_immediate_edit.colors.clear();
+    lines_immediate_edit.indices.clear();
+
+    let mut lines_volatile_edit: Option<mesh_helper::MeshEditXC> = None;
+
+    // Manage volatile lines
+    for i in (0..gizmos.lines_volatile_tracker.len()).rev() {
+        let (time_left, _, _) = &mut gizmos.lines_volatile_tracker[i];
+
+        if *time_left < 0.0 {
+            let (_, v_range, i_range) = gizmos.lines_volatile_tracker.remove(i);
+
+            // Remove lines
+            let edit = lines_volatile_edit.get_or_insert_with(|| {
+                // SAFETY: This mesh is fetched once,
+                // further more the `meshes` won't mutate only his meshes
+                let meshes = unsafe { &mut *(meshes as *mut _) };
+                gizmos.lines_volatile.edit(meshes)
+            });
+
+            // ? NOTE: This algorithm will reduce the amount of memory that needs to be sended over to the GPU
+            // ? and also reduce memory fragmentation, although having to move data around quite a bit
+            // Remove vertex attributes
+            edit.vertices.drain(v_range.start..v_range.end);
+            edit.colors.drain(v_range.start..v_range.end);
+
+            let i_offset = i_range.start - i_range.end;
+            let v_offset = v_range.start - v_range.end;
+
+            // Move indexes over the removed role
+            for i in i_range.end..edit.indices.len() {
+                debug_assert!(edit.indices[i] >= i_range.end as u32);
+                edit.indices[i - i_offset] = edit.indices[i] - i_offset as u32;
+            }
+            // Trim the left over
+            edit.indices
+                .resize_with(edit.indices.len() - i_offset, || unreachable!());
+
+            // Offset each other volatile line to keep track the moved parts
+            for (_, v, i) in gizmos.lines_volatile_tracker.iter_mut() {
+                if v.start >= v_range.start {
+                    v.start -= v_offset;
+                    v.end -= v_offset;
                 }
-                GizmoVolatile::Shape(entity) => {
-                    // Delete the gizmo
-                    commands.despawn_recursive(entity);
+                if i.start >= i_range.start {
+                    i.start -= i_offset;
+                    i.end -= i_offset;
                 }
             }
         } else {
@@ -370,51 +461,85 @@ fn gizmos_update_system(
                 shape,
                 duration,
                 color,
+                wireframe,
             } => {
                 // Spawn gizmo
                 let entity = commands
                     .spawn((transform, GlobalTransform::default(), Children::default()))
                     .current_entity()
                     .unwrap();
-                gizmo_instantiate(commands, gizmos, entity, &Gizmo { shape, color });
+
+                let gizmo = Gizmo {
+                    shape,
+                    color,
+                    wireframe,
+                };
+
+                if gizmo.wireframe.a() > f32::EPSILON {
+                    gizmo_instantiate(
+                        commands,
+                        &gizmos.meshes_wireframe,
+                        entity,
+                        gizmo.shape.clone(),
+                        gizmo.wireframe,
+                    );
+                }
+
+                if gizmo.color.a() > f32::EPSILON {
+                    gizmo_instantiate(
+                        commands,
+                        &gizmos.meshes,
+                        entity,
+                        gizmo.shape.clone(),
+                        gizmo.color,
+                    );
+                }
+
                 // Keep track
-                gizmos
-                    .volatile
-                    .push((duration, GizmoVolatile::Shape(entity)));
+                gizmos.shapes_volatile_tracker.push((duration, entity));
             }
             GizmoCommand::LineList {
                 points,
                 duration,
                 color,
             } => {
+                // True if more than a single frame
+                let volatile = duration > f32::EPSILON;
+
                 // Add new lines
-                let edit = lines_mesh_edit.get_or_insert_with(|| {
-                    // Lazily fetch a mutable mesh reference to avoid triggering an update every frame
-                    let lines_mesh = meshes.get_mut(&gizmos.lines_mesh_handle).unwrap();
-                    // SAFETY: Will be only be fetched once for
-                    let lines_mesh = unsafe { &mut *(lines_mesh as *mut _) };
-                    mesh_helper::MeshEditXC::from(lines_mesh)
-                });
+                let edit = if volatile {
+                    lines_volatile_edit.get_or_insert_with(|| {
+                        // SAFETY: This mesh is fetched once, further more the `meshes` won't mutate only his meshes
+                        let meshes = unsafe { &mut *(meshes as *mut _) };
+                        gizmos.lines_volatile.edit(meshes)
+                    })
+                } else {
+                    &mut lines_immediate_edit
+                };
 
                 let v = edit.vertices.len();
+                let inserted_points = points.len();
 
-                // TODO: I really don't trust these iterators todo the right thing
-                edit.vertices
-                    .extend(points.iter().map(|v| <[f32; 3]>::from(*v)));
-
-                edit.colors
-                    .resize(edit.colors.len() + points.len(), <[f32; 4]>::from(color));
-
-                let i = edit.indices.len();
-                for j in 0..(points.len() - 1) {
-                    edit.indices.push(j as u32);
-                    edit.indices.push(j as u32 + 1);
+                // SAFETY: `Vec3` can be trivially interpreted as `[f32; 3]`, and transmute guarantees both
+                // types have the same size so the `SmallVec` buffer will always have the right amount of points
+                unsafe {
+                    edit.vertices
+                        .extend(std::mem::transmute::<_, SmallVec<[[f32; 3]; 4]>>(points));
                 }
 
-                // Keep track
-                gizmos.volatile.push((
-                    duration,
-                    GizmoVolatile::Line(
+                edit.colors
+                    .resize(edit.colors.len() + inserted_points, <[f32; 4]>::from(color));
+
+                let i = edit.indices.len();
+                for index in 0..(inserted_points - 1) {
+                    edit.indices.push(index as u32);
+                    edit.indices.push(index as u32 + 1);
+                }
+
+                if volatile {
+                    // Keep track, but only if volatile
+                    gizmos.lines_volatile_tracker.push((
+                        duration,
                         Range {
                             start: v,
                             end: edit.vertices.len(),
@@ -423,78 +548,88 @@ fn gizmos_update_system(
                             start: i,
                             end: edit.indices.len(),
                         },
-                    ),
-                ));
+                    ));
+                }
             }
         }
     }
 }
 
+/// Instantiates a gizmo mesh
 fn gizmo_instantiate(
     commands: &mut Commands,
-    gizmos: &mut GizmosResources,
+    gizmos: &GizmosMeshes,
     parent: Entity,
-    gizmo: &Gizmo,
+    gizmo_shape: GizmoShape,
+    gizmo_color: Color,
 ) {
-    match gizmo.shape.clone() {
+    let mut material = GizmoMaterial::from(gizmo_color);
+    //material.lit = !gizmos.wireframe;
+
+    match gizmo_shape {
         GizmoShape::Empty { radius } => {
             commands
-                .spawn(GizmoMeshBundle::new(
-                    Transform::from_scale(Vec3::splat(radius)),
-                    gizmos.mesh_empty.clone(),
-                    gizmo.color,
-                ))
+                .spawn(GizmoMeshBundle {
+                    transform: Transform::from_scale(Vec3::splat(radius)),
+                    mesh: gizmos.mesh_empty.clone(),
+                    material,
+                    ..Default::default()
+                })
                 .with(Parent(parent));
         }
         GizmoShape::Billboard { texture, size } => {
+            material.texture = texture;
+            //material.lit = false;
+            material.billboard = true;
+            material.billboard_size = size;
+
             commands
-                .spawn(GizmoMeshBundle::new(
-                    Transform::default(),
-                    gizmos.mesh_billboard.clone(),
-                    GizmoMaterial {
-                        color: gizmo.color,
-                        texture,
-                        billboard: true,
-                        billboard_size: size,
-                        ..Default::default()
-                    },
-                ))
+                .spawn(GizmoMeshBundle {
+                    transform: Transform::default(),
+                    mesh: gizmos.mesh_billboard.clone(),
+                    material,
+                    ..Default::default()
+                })
                 .with(Parent(parent));
         }
         GizmoShape::Cube { size } => {
             commands
-                .spawn(GizmoMeshBundle::new(
-                    Transform::from_scale(size),
-                    gizmos.mesh_cube.clone(),
-                    gizmo.color,
-                ))
+                .spawn(GizmoMeshBundle {
+                    transform: Transform::from_scale(size),
+                    mesh: gizmos.mesh_cube.clone(),
+                    material,
+                    ..Default::default()
+                })
                 .with(Parent(parent));
         }
         GizmoShape::Sphere { radius } => {
             commands
-                .spawn(GizmoMeshBundle::new(
-                    Transform::from_scale(Vec3::splat(radius)),
-                    gizmos.mesh_sphere.clone(),
-                    gizmo.color,
-                ))
+                .spawn(GizmoMeshBundle {
+                    transform: Transform::from_scale(Vec3::splat(radius)),
+                    mesh: gizmos.mesh_sphere.clone(),
+                    material,
+                    ..Default::default()
+                })
                 .with(Parent(parent));
         }
         GizmoShape::Hemisphere { radius } => {
             commands
-                .spawn(GizmoMeshBundle::new(
-                    Transform::from_scale(Vec3::splat(radius)),
-                    gizmos.mesh_hemisphere.clone(),
-                    gizmo.color,
-                ))
+                .spawn(GizmoMeshBundle {
+                    transform: Transform::from_scale(Vec3::splat(radius)),
+                    mesh: gizmos.mesh_hemisphere.clone(),
+                    material,
+                    ..Default::default()
+                })
                 .with(Parent(parent));
         }
         GizmoShape::Cylinder { radius, height } => {
             commands
-                .spawn(GizmoMeshBundle::new(
-                    Transform::from_scale(Vec3::new(radius, height, radius)),
-                    gizmos.mesh_cylinder.clone(),
-                    gizmo.color,
-                ))
+                .spawn(GizmoMeshBundle {
+                    transform: Transform::from_scale(Vec3::new(radius, height, radius)),
+                    mesh: gizmos.mesh_cylinder.clone(),
+                    material,
+                    ..Default::default()
+                })
                 .with(Parent(parent));
         }
         GizmoShape::Capsule {
@@ -525,41 +660,45 @@ fn gizmo_instantiate(
             };
 
             commands
-                .spawn(GizmoMeshBundle::new(
-                    Transform {
+                .spawn(GizmoMeshBundle {
+                    transform: Transform {
                         translation: top,
                         rotation,
                         scale: Vec3::splat(radius),
                     },
-                    gizmos.mesh_capsule_cap.clone(),
-                    gizmo.color,
-                ))
+                    mesh: gizmos.mesh_capsule_cap.clone(),
+                    material: material.clone(),
+                    ..Default::default()
+                })
                 .with(Parent(parent));
             commands
-                .spawn(GizmoMeshBundle::new(
-                    Transform {
+                .spawn(GizmoMeshBundle {
+                    transform: Transform {
                         translation: Vec3::zero(),
                         rotation,
                         scale: Vec3::new(radius, height, radius),
                     },
-                    gizmos.mesh_cylinder.clone(),
-                    gizmo.color,
-                ))
+                    mesh: gizmos.mesh_cylinder.clone(),
+                    material: material.clone(),
+                    ..Default::default()
+                })
                 .with(Parent(parent));
             commands
-                .spawn(GizmoMeshBundle::new(
-                    Transform {
+                .spawn(GizmoMeshBundle {
+                    transform: Transform {
                         translation: bottom,
                         rotation,
                         scale: Vec3::splat(-radius),
                     },
-                    gizmos.mesh_capsule_cap.clone(),
-                    gizmo.color,
-                ))
+                    mesh: gizmos.mesh_capsule_cap.clone(),
+                    material,
+                    ..Default::default()
+                })
                 .with(Parent(parent));
         }
         GizmoShape::Mesh { mesh } => {
             // Wireframe component ?!?
+            let _ = mesh;
             todo!()
         }
     };
