@@ -308,8 +308,6 @@ fn gizmos_setup(
 ) {
     let meshes = &mut *meshes;
 
-    // TODO: Other meshes
-
     gizmos.meshes_wireframe.wireframe = true;
     gizmos.meshes_wireframe.mesh_empty = meshes.add(gen::wire_empty());
     gizmos.meshes_wireframe.mesh_billboard = meshes.add(gen::billboard());
@@ -319,7 +317,14 @@ fn gizmos_setup(
     gizmos.meshes_wireframe.mesh_cylinder = meshes.add(gen::wire_cylinder());
     gizmos.meshes_wireframe.mesh_capsule_cap = meshes.add(gen::wire_capsule_cap());
 
+    gizmos.meshes_wireframe.wireframe = false;
+    gizmos.meshes.mesh_empty = meshes.add(gen::empty());
     gizmos.meshes.mesh_billboard = gizmos.meshes_wireframe.mesh_billboard.clone(); // Billboard is the same for both
+    gizmos.meshes.mesh_cube = meshes.add(gen::cube());
+    gizmos.meshes.mesh_sphere = meshes.add(gen::sphere());
+    // gizmos.meshes.mesh_hemisphere = meshes.add(gen::hemisphere());
+    // gizmos.meshes.mesh_cylinder = meshes.add(gen::cylinder());
+    // gizmos.meshes.mesh_capsule_cap = meshes.add(gen::capsule_cap());
 
     // Shared line mesh
     gizmos.lines_volatile = Line::new(commands, meshes);

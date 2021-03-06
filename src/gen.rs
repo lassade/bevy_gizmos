@@ -1,6 +1,9 @@
 use bevy::{
     prelude::*,
-    render::{mesh::Indices, pipeline::PrimitiveTopology},
+    render::{
+        mesh::{Indices, VertexAttributeValues},
+        pipeline::PrimitiveTopology,
+    },
 };
 use std::f32::consts::PI;
 
@@ -31,6 +34,19 @@ pub fn wire_cube() -> Mesh {
         4, 5, 5, 6, 6, 7, 7, 4, // Back
         0, 4, 1, 5, 2, 6, 3, 7, // Bridge
     ])));
+    mesh
+}
+
+pub fn cube() -> Mesh {
+    let mut mesh = Mesh::from(shape::Cube::new(1.0));
+
+    // Add vertex color (required by shader)
+    mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, {
+        let mut color: Vec<[f32; 4]> = vec![];
+        color.resize(6, [1.0; 4]);
+        color
+    });
+
     mesh
 }
 
@@ -73,6 +89,30 @@ pub fn wire_sphere() -> Mesh {
     mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, color);
     mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.set_indices(Some(Indices::U16(indices)));
+    mesh
+}
+
+pub fn sphere() -> Mesh {
+    let mut mesh = Mesh::from(shape::Icosphere {
+        radius: 1.0,
+        subdivisions: 2,
+    });
+
+    let vertex_count = if let Some(VertexAttributeValues::Float3(vertices)) =
+        mesh.attribute(Mesh::ATTRIBUTE_POSITION)
+    {
+        vertices.len()
+    } else {
+        unreachable!()
+    };
+
+    // Add vertex color (required by shader)
+    mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, {
+        let mut color: Vec<[f32; 4]> = vec![];
+        color.resize(vertex_count, [1.0; 4]);
+        color
+    });
+
     mesh
 }
 
@@ -122,6 +162,10 @@ pub fn wire_cylinder() -> Mesh {
     mesh.set_indices(Some(Indices::U16(indices)));
     mesh
 }
+
+// TODO: Cylinder
+
+// TODO: Hemisphere
 
 pub fn wire_hemisphere() -> Mesh {
     let mut positions: Vec<[f32; 3]> = Vec::with_capacity(16 * 3);
@@ -221,6 +265,30 @@ pub fn wire_empty() -> Mesh {
     mesh
 }
 
+/// Actually an small (0.1) octahedron
+pub fn empty() -> Mesh {
+    let mut color: Vec<[f32; 4]> = vec![];
+    color.resize(6, [1.0; 4]);
+
+    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+    mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, color);
+    mesh.set_attribute(
+        Mesh::ATTRIBUTE_POSITION,
+        vec![
+            [0.0, -0.1414, 0.0],
+            [0.0, 0.1414, 0.0],
+            [-0.1, 0.0, -0.1],
+            [-0.1, 0.0, 0.1],
+            [0.1, 0.0, 0.1],
+            [0.1, 0.0, -0.1],
+        ],
+    );
+    mesh.set_indices(Some(Indices::U16(vec![
+        2, 1, 3, 3, 1, 4, 4, 1, 5, 5, 1, 2, 0, 5, 2, 0, 4, 5, 0, 3, 4, 0, 2, 3,
+    ])));
+    mesh
+}
+
 pub fn billboard() -> Mesh {
     let mut mesh = Mesh::from(shape::Quad::new(Vec2::one()));
 
@@ -235,5 +303,9 @@ pub fn billboard() -> Mesh {
 }
 
 pub fn wire_circle() -> Mesh {
+    todo!()
+}
+
+pub fn circle() -> Mesh {
     todo!()
 }
