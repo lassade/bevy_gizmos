@@ -278,6 +278,7 @@ struct GizmosMeshes {
     mesh_sphere: Handle<Mesh>,
     mesh_hemisphere: Handle<Mesh>,
     mesh_cylinder: Handle<Mesh>,
+    mesh_capsule_body: Handle<Mesh>,
     mesh_capsule_cap: Handle<Mesh>, // Similar to hemisphere but with less redundant lines
 }
 
@@ -310,21 +311,23 @@ fn gizmos_setup(
 
     gizmos.meshes_wireframe.wireframe = true;
     gizmos.meshes_wireframe.mesh_empty = meshes.add(gen::wire_empty());
-    gizmos.meshes_wireframe.mesh_billboard = meshes.add(gen::billboard());
+    //gizmos.meshes_wireframe.mesh_billboard = ...; // Empty
     gizmos.meshes_wireframe.mesh_cube = meshes.add(gen::wire_cube());
     gizmos.meshes_wireframe.mesh_sphere = meshes.add(gen::wire_sphere());
     gizmos.meshes_wireframe.mesh_hemisphere = meshes.add(gen::wire_hemisphere());
     gizmos.meshes_wireframe.mesh_cylinder = meshes.add(gen::wire_cylinder());
+    gizmos.meshes_wireframe.mesh_capsule_body = gizmos.meshes_wireframe.mesh_cylinder.clone();
     gizmos.meshes_wireframe.mesh_capsule_cap = meshes.add(gen::wire_capsule_cap());
 
-    gizmos.meshes_wireframe.wireframe = false;
+    gizmos.meshes.wireframe = false;
     gizmos.meshes.mesh_empty = meshes.add(gen::empty());
-    gizmos.meshes.mesh_billboard = gizmos.meshes_wireframe.mesh_billboard.clone(); // Billboard is the same for both
+    gizmos.meshes.mesh_billboard = meshes.add(gen::billboard());
     gizmos.meshes.mesh_cube = meshes.add(gen::cube());
     gizmos.meshes.mesh_sphere = meshes.add(gen::sphere());
-    // gizmos.meshes.mesh_hemisphere = meshes.add(gen::hemisphere());
+    gizmos.meshes.mesh_hemisphere = meshes.add(gen::hemisphere());
     // gizmos.meshes.mesh_cylinder = meshes.add(gen::cylinder());
-    // gizmos.meshes.mesh_capsule_cap = meshes.add(gen::capsule_cap());
+    gizmos.meshes.mesh_capsule_body = meshes.add(gen::capsule_body());
+    gizmos.meshes.mesh_capsule_cap = gizmos.meshes.mesh_hemisphere.clone();
 
     // Shared line mesh
     gizmos.lines_volatile = Line::new(commands, meshes);
@@ -683,7 +686,7 @@ fn gizmo_instantiate(
                         rotation,
                         scale: Vec3::new(radius, height, radius),
                     },
-                    mesh: gizmos.mesh_cylinder.clone(),
+                    mesh: gizmos.mesh_capsule_body.clone(),
                     material: material.clone(),
                     ..Default::default()
                 })
