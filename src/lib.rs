@@ -438,14 +438,6 @@ fn gizmos_update_system(
                 gizmos.lines_volatile.edit(meshes)
             });
 
-            println!(
-                "{:?} {}, {:?} {}",
-                v_range,
-                edit.vertices.len(),
-                i_range,
-                edit.indices.len()
-            );
-
             // ? NOTE: This algorithm will reduce the amount of memory that needs to be sended over to the GPU
             // ? and also reduce memory fragmentation, although having to move data around quite a bit
             // Remove vertex attributes
