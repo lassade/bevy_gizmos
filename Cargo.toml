@@ -12,7 +12,7 @@ smallvec = "1.6.1"
 crossbeam = "0.8.0"
 
 [dev-dependencies] 
-# flycamera ...
+bevy_flycam = { path = "../bevy_flycam" }
 
 [[example]]
 name = "showcase"

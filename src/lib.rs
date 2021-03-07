@@ -172,6 +172,9 @@ impl Default for Gizmos {
 }
 
 impl Gizmos {
+    /// Begins a draw group, each group have its one mask that can
+    /// switch on and off using any gizmos code, use [`Gizmos.mask`]
+    /// to control it;
     #[inline]
     pub fn draw(&self, mask: u32, scope: impl FnOnce(GizmosContext)) -> &Self {
         if (mask & self.mask) != 0 {
@@ -435,20 +438,39 @@ fn gizmos_update_system(
                 gizmos.lines_volatile.edit(meshes)
             });
 
+            println!(
+                "{:?} {}, {:?} {}",
+                v_range,
+                edit.vertices.len(),
+                i_range,
+                edit.indices.len()
+            );
+
             // ? NOTE: This algorithm will reduce the amount of memory that needs to be sended over to the GPU
             // ? and also reduce memory fragmentation, although having to move data around quite a bit
             // Remove vertex attributes
             edit.vertices.drain(v_range.start..v_range.end);
             edit.colors.drain(v_range.start..v_range.end);
 
-            let i_offset = i_range.start - i_range.end;
-            let v_offset = v_range.start - v_range.end;
+            let i_offset = i_range.end - i_range.start;
+            let v_offset = v_range.end - v_range.start;
 
             // Move indexes over the removed role
             for i in i_range.end..edit.indices.len() {
-                debug_assert!(edit.indices[i] >= i_range.end as u32);
-                edit.indices[i - i_offset] = edit.indices[i] - i_offset as u32;
+                let index = edit.indices[i];
+                edit.indices[i - i_offset] = if index >= v_range.end as u32 {
+                    index - v_offset as u32
+                } else {
+                    index
+                }
             }
+            // Make sure to keep all the indices pointing to the right vertices
+            for i in 0..i_range.start {
+                if edit.indices[i] >= v_range.end as u32 {
+                    edit.indices[i] -= v_offset as u32;
+                }
+            }
+
             // Trim the left over
             edit.indices
                 .resize_with(edit.indices.len() - i_offset, || unreachable!());
@@ -547,8 +569,8 @@ fn gizmos_update_system(
 
                 let i = edit.indices.len();
                 for index in 0..(inserted_points - 1) {
-                    edit.indices.push(index as u32);
-                    edit.indices.push(index as u32 + 1);
+                    edit.indices.push((v + index) as u32);
+                    edit.indices.push((v + index) as u32 + 1);
                 }
 
                 if volatile {

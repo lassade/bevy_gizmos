@@ -1,8 +1,15 @@
+use std::f32::consts::PI;
+
 use bevy::{
-    animation::tracks::{Track, TrackVariableLinear},
+    animation::{
+        interpolation::Lerp,
+        tracks::{Track, TrackVariableLinear},
+    },
     prelude::*,
 };
+use bevy_flycam::{FlyCam, MovementSettings, NoCameraPlayerPlugin};
 use bevy_gizmos::{Axis, *};
+use smallvec::SmallVec;
 
 struct AnimationTime {
     time: f32,
@@ -51,6 +58,11 @@ fn main() {
         .insert_resource(animation_resource)
         .add_plugins(DefaultPlugins) // Default Bevy plugins.
         .add_plugin(GizmosPlugin)
+        .add_plugin(NoCameraPlayerPlugin)
+        .insert_resource(MovementSettings {
+            sensitivity: 0.00012,
+            speed: 12.0,
+        })
         .add_startup_system(setup.system())
         .add_startup_system(persistent_gizmos.system())
         .add_system(immediate_mode_gizmos_system.system())
@@ -67,7 +79,8 @@ fn setup(commands: &mut Commands) {
         .spawn(PerspectiveCameraBundle {
             transform: Transform::from_xyz(0.0, 0.0, 8.0).looking_at(Vec3::zero(), Vec3::unit_y()),
             ..Default::default()
-        });
+        })
+        .with(FlyCam);
 }
 
 fn persistent_gizmos(commands: &mut Commands) {
@@ -179,7 +192,7 @@ fn persistent_gizmos(commands: &mut Commands) {
         });
 
     // commands.spawn(GizmoBundle {
-    //     transform: Transform::from_xyz(-2.0, 1.5, 0.0),
+    //     transform: Transform::from_xyz(2.0, -1.5, 0.0),
     //     gizmo: Gizmo {
     //         shape: GizmoShape::Mesh {
     //             mesh: ???,
@@ -191,8 +204,41 @@ fn persistent_gizmos(commands: &mut Commands) {
     // });
 }
 
-fn immediate_mode_gizmos_system(gizmos: Res<Gizmos>) {}
+fn immediate_mode_gizmos_system(
+    mut time_tracker: Local<f32>,
+    time: Res<Time>,
+    gizmos: Res<Gizmos>,
+) {
+    gizmos.draw(!0, |mut context| {
+        let t = time.seconds_since_startup() as f32;
+        if t < *time_tracker + 0.1 {
+            return;
+        }
+        *time_tracker = t;
 
+        // Generate line
+        let points = (0..32)
+            .into_iter()
+            .map(|i| i as f32 / 33.0)
+            .map(|x| Vec3::new(2.0 * x - 1.0, (PI * 1.5 * x + t).sin(), 0.0))
+            .collect::<SmallVec<_>>();
+
+        // Start drawing
+        context
+            // Position the line
+            .push_matrix(Transform::from_xyz(4.0, -1.5, 0.0))
+            // Set it's color
+            .with_wireframe(Color::lerp(
+                &Color::RED,
+                &Color::SEA_GREEN,
+                (t * 0.3).fract(),
+            ))
+            // Draw line with a duration of 0.5 seconds
+            .line_list(points, 2.0);
+    });
+}
+
+// Just animations
 fn animation(
     time: Res<Time>,
     animation_resource: Res<AnimationResource>,
