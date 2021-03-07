@@ -39,6 +39,10 @@ Ideally it shouldn't drop FPS while active, unless it's a user fault.
 
 Have a lot of pre-made gizmos, enough to cover basic and some extra, to name a few: capsule, spline, arrow_handle, billboards;
 
+### Preview
+
+()[https://raw.githubusercontent.com/lassade/bevy_gizmos/for-bevy-master-branch/examples/showcase_preview.png]
+
 ### Other alternatives
 
 [bevy_prototype_debug_lines](https://github.com/Toqozz/bevy_debug_lines)
