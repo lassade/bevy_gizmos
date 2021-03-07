@@ -1,5 +1,5 @@
 [package]
-name = "bevy_contrib_gizmos"
+name = "bevy_gizmos"
 version = "0.1.0"
 authors = ["Felipe Jorge <felipe.jorge.pereira@gmail.com>"]
 edition = "2018"
@@ -10,3 +10,9 @@ bevy = { path = "../bevy" }
 
 smallvec = "1.6.1"
 crossbeam = "0.8.0"
+
+[dev-dependencies] 
+# flycamera ...
+
+[[example]]
+name = "showcase"

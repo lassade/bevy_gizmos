@@ -26,16 +26,20 @@ pub enum Axis {
 
 #[derive(Debug, Clone)]
 pub enum GizmoShape {
-    /// Similar to blender empty axis
+    /// Similar to blender empty axis, his solid shape is a octahedron
     Empty {
         radius: f32,
     },
+    /// **NOTE** Billboard is the only gizmos that doesn't have a wireframe version
     Billboard {
         texture: Option<Handle<Texture>>,
         size: f32,
     },
     Cube {
         size: Vec3,
+    },
+    Circle {
+        radius: f32,
     },
     Sphere {
         radius: f32,
@@ -88,10 +92,10 @@ impl Default for Gizmo {
 
 #[derive(Default, Bundle)]
 pub struct GizmoBundle {
-    pub gizmo: Gizmo,
-    pub transform: Transform,
     pub global_transform: GlobalTransform,
+    pub transform: Transform,
     pub children: Children,
+    pub gizmo: Gizmo,
 }
 
 /// The gizmo may use multiple [`GizmosMeshBundles`] to render it self
@@ -152,22 +156,22 @@ pub enum GizmoCommand {
     },
 }
 
-pub struct GizmosCommandBuffer {
+pub struct Gizmos {
     /// Control which set of gizmos it will draw
     pub mask: u32,
     commands: crossbeam::queue::SegQueue<GizmoCommand>,
 }
 
-impl Default for GizmosCommandBuffer {
+impl Default for Gizmos {
     fn default() -> Self {
-        GizmosCommandBuffer {
+        Gizmos {
             mask: u32::MAX,
             commands: Default::default(),
         }
     }
 }
 
-impl GizmosCommandBuffer {
+impl Gizmos {
     #[inline]
     pub fn draw(&self, mask: u32, scope: impl FnOnce(GizmosContext)) -> &Self {
         if (mask & self.mask) != 0 {
@@ -183,11 +187,11 @@ pub struct GizmosContext<'a> {
     color: Color,
     wireframe: Color,
     stack: Vec<Transform>,
-    command_buffer: &'a GizmosCommandBuffer,
+    command_buffer: &'a Gizmos,
 }
 
 impl<'a> GizmosContext<'a> {
-    fn new(command_buffer: &'a GizmosCommandBuffer) -> Self {
+    fn new(command_buffer: &'a Gizmos) -> Self {
         Self {
             color: Color::rgba_linear(0.0, 0.0, 0.0, 0.0),
             wireframe: Color::WHITE,
@@ -257,7 +261,7 @@ impl<'a> GizmosContext<'a> {
         self.command(GizmoCommand::LineList {
             points,
             duration,
-            color: self.color,
+            color: self.wireframe,
         })
     }
 
@@ -342,7 +346,7 @@ fn gizmos_update_system(
     time: Res<Time>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut gizmos: ResMut<GizmosResources>,
-    gizmos_command_buffer: ResMut<GizmosCommandBuffer>,
+    gizmos_command_buffer: ResMut<Gizmos>,
     gizmos_query: Query<(Entity, &Gizmo, &Children), (Changed<Gizmo>,)>,
     // gizmos_removed_query: Query<Entity, Without<Gizmo>>,
 ) {
@@ -613,6 +617,10 @@ fn gizmo_instantiate(
                 })
                 .with(Parent(parent));
         }
+        GizmoShape::Circle { radius } => {
+            let _ = radius;
+            todo!()
+        }
         GizmoShape::Sphere { radius } => {
             commands
                 .spawn(GizmoMeshBundle {
@@ -671,7 +679,7 @@ fn gizmo_instantiate(
                     bottom[2] = -offset;
                     (
                         Quat::from_rotation_x(PI * 0.5),
-                        Quat::from_rotation_ypr(PI * 0.5, 0.0, PI),
+                        Quat::from_rotation_ypr(0.0, PI * 0.5, PI),
                     )
                 }
             };
@@ -723,21 +731,33 @@ fn gizmo_instantiate(
 
 ///////////////////////////////////////////////////////////////////////////////
 
+// ? NOTE: Gizmos needs his own stage because it relays on commands to push out
+// ? many of the pre-build gizmos
+#[derive(Debug, Hash, PartialEq, Eq, Clone, StageLabel)]
+pub enum GizmoStage {
+    Update,
+}
+
 #[derive(Default)]
 pub struct GizmosPlugin;
 
 impl Plugin for GizmosPlugin {
     fn build(&self, app: &mut AppBuilder) {
+        app.add_stage_after(
+            CoreStage::Update,
+            GizmoStage::Update,
+            SystemStage::parallel(),
+        );
+
         app.register_type::<GizmoMaterial>().add_system_to_stage(
-            CoreStage::PostUpdate,
+            GizmoStage::Update,
             shader::shader_defs_system::<GizmoMaterial>.system(),
         );
 
-        app.insert_resource(GizmosCommandBuffer::default())
+        app.insert_resource(Gizmos::default())
             .insert_resource(GizmosResources::default())
             .add_startup_system(gizmos_setup.system())
             .add_startup_system(render_graph::gizmos_pipeline_setup.system())
-            //.add_stage_after(stage::POST_UPDATE, "gizmos")
-            .add_system_to_stage(CoreStage::PostUpdate, gizmos_update_system.system());
+            .add_system_to_stage(GizmoStage::Update, gizmos_update_system.system());
     }
 }

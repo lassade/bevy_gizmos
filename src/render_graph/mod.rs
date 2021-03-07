@@ -13,6 +13,8 @@ mod screen_info_node;
 
 use crate::GizmoMaterial;
 
+// TODO: Overlay pipeline
+
 // NOTE: generated using python `import secrets; secrets.token_hex(8)`
 pub const GIZMOS_PIPELINE_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(PipelineDescriptor::TYPE_UUID, 0x936896ad9d35720c_u64);

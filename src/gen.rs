@@ -47,36 +47,42 @@ pub fn cube() -> Mesh {
 }
 
 pub fn wire_sphere() -> Mesh {
-    let mut positions: Vec<[f32; 3]> = Vec::with_capacity(16 * 3);
-    let mut indices: Vec<u16> = Vec::with_capacity(16 * 3 * 2);
+    let mut positions: Vec<[f32; 3]> = Vec::with_capacity(32 * 3);
+    let mut indices: Vec<u16> = Vec::with_capacity(32 * 3 * 2);
 
-    for i in 0..16u16 {
-        let t = (i as f32) * (2.0 / 15.0);
+    for i in 0..32u16 {
+        let t = (i as f32) * (2.0 / 32.0);
         let (y, x) = f32::sin_cos(t * PI);
         positions.push([x, y, 0.0]);
-        if i < 15 {
+        if i < 31 {
             indices.push(i);
             indices.push(i + 1);
         }
     }
+    indices.push(31);
+    indices.push(0);
 
-    for i in 0..16u16 {
+    for i in 0..32u16 {
         let p = positions[i as usize];
         positions.push([p[0], 0.0, p[1]]);
-        if i < 15 {
+        if i < 31 {
             indices.push(i + 32);
             indices.push(i + 1 + 32);
         }
     }
+    indices.push(31 + 32);
+    indices.push(32);
 
-    for i in 0..16u16 {
+    for i in 0..32u16 {
         let p = positions[i as usize];
         positions.push([0.0, p[1], p[0]]);
-        if i < 15 {
-            indices.push(i + 48);
-            indices.push(i + 1 + 48);
+        if i < 31 {
+            indices.push(i + 64);
+            indices.push(i + 1 + 64);
         }
     }
+    indices.push(31 + 64);
+    indices.push(64);
 
     let mut color: Vec<[f32; 4]> = vec![];
     color.resize(positions.len(), [1.0; 4]);
@@ -152,26 +158,30 @@ pub fn wire_hemisphere() -> Mesh {
     let mut positions: Vec<[f32; 3]> = Vec::with_capacity(16 * 3);
     let mut indices: Vec<u16> = Vec::with_capacity(16 * 3 * 2);
 
+    for i in 0..32u16 {
+        let t = (i as f32) * (2.0 / 32.0);
+        let (y, x) = f32::sin_cos(t * PI);
+        positions.push([x, 0.0, y]);
+        if i < 31 {
+            indices.push(i);
+            indices.push(i + 1);
+        }
+    }
+    indices.push(31);
+    indices.push(0);
+
     for i in 0..16u16 {
         let t = (i as f32) * (1.0 / 15.0);
         let (y, x) = f32::sin_cos(t * PI);
         positions.push([x, y, 0.0]);
         if i < 15 {
-            indices.push(i);
-            indices.push(i + 1);
+            indices.push(i + 32);
+            indices.push(i + 1 + 32);
         }
     }
 
     for i in 0..16u16 {
-        let t = (i as f32) * (2.0 / 15.0);
-        let (y, x) = f32::sin_cos(t * PI);
-        positions.push([x, 0.0, y]);
-        indices.push(i + 32);
-        indices.push(i + 1 + 32);
-    }
-
-    for i in 0..16u16 {
-        let p = positions[i as usize];
+        let p = positions[(i + 32) as usize];
         positions.push([0.0, p[1], p[0]]);
         if i < 15 {
             indices.push(i + 48);
