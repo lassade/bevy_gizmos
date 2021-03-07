@@ -41,7 +41,7 @@ Have a lot of pre-made gizmos, enough to cover basic and some extra, to name a f
 
 ### Preview
 
-[](https://raw.githubusercontent.com/lassade/bevy_gizmos/for-bevy-master-branch/examples/showcase_preview.png)
+![Showcase Preview](https://raw.githubusercontent.com/lassade/bevy_gizmos/for-bevy-master-branch/examples/showcase_preview.png)
 
 ### Other alternatives
 
