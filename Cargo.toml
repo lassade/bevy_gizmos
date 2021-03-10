@@ -6,13 +6,10 @@ edition = "2018"
 
 [dependencies]
 # TODO: Limit the crates dependencies (mainly to reduce compile times)
-bevy = { path = "../bevy" }
+bevy = { git = "https://github.com/lassade/bevy.git", branch = "animations" }
 
 smallvec = "1.6.1"
 crossbeam = "0.8.0"
-
-[dev-dependencies] 
-bevy_flycam = { path = "../bevy_flycam" }
 
 [[example]]
 name = "showcase"

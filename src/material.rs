@@ -8,10 +8,11 @@ use bevy::{
 pub struct GizmoMaterial {
     pub color: Color,
 
-    // // ! FIXME: ShaderDefs, don't like defines that are on by default
-    // #[shader_def]
-    // #[render_resources(ignore)]
-    // pub lit: bool,
+    // ! FIXME: ShaderDefs, don't like defines that are on by default
+    #[shader_def]
+    #[render_resources(ignore)]
+    pub unlit: bool,
+
     #[shader_def]
     #[reflect(ignore)]
     pub texture: Option<Handle<Texture>>,
@@ -27,7 +28,7 @@ impl Default for GizmoMaterial {
         Self {
             color: Color::WHITE,
             // lit: false,
-            // unlit: true,
+            unlit: true,
             texture: None,
             billboard: false,
             billboard_size: 0.5,

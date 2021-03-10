@@ -7,7 +7,6 @@ use bevy::{
     },
     prelude::*,
 };
-use bevy_flycam::{FlyCam, MovementSettings, NoCameraPlayerPlugin};
 use bevy_gizmos::{Axis, *};
 use smallvec::SmallVec;
 
@@ -58,11 +57,6 @@ fn main() {
         .insert_resource(animation_resource)
         .add_plugins(DefaultPlugins) // Default Bevy plugins.
         .add_plugin(GizmosPlugin)
-        .add_plugin(NoCameraPlayerPlugin)
-        .insert_resource(MovementSettings {
-            sensitivity: 0.00012,
-            speed: 12.0,
-        })
         .add_startup_system(setup.system())
         .add_startup_system(persistent_gizmos.system())
         .add_system(immediate_mode_gizmos_system.system())
@@ -79,8 +73,7 @@ fn setup(commands: &mut Commands) {
         .spawn(PerspectiveCameraBundle {
             transform: Transform::from_xyz(0.0, 0.0, 8.0).looking_at(Vec3::zero(), Vec3::unit_y()),
             ..Default::default()
-        })
-        .with(FlyCam);
+        });
 }
 
 fn persistent_gizmos(commands: &mut Commands) {

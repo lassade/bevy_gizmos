@@ -6,7 +6,7 @@ layout(location = 0) in vec4 v_Color;
 layout(location = 1) in vec2 v_Uv;
 #endif
 
-#ifdef GIZMOMATERIAL_LIT
+#ifndef GIZMOMATERIAL_UNLIT
 layout(location = 2) in vec3 v_Normal;
 #endif
 
@@ -39,7 +39,7 @@ void main() {
         v_Uv);
 #endif
 
-#ifdef GIZMOMATERIAL_LIT
+#ifndef GIZMOMATERIAL_UNLIT
     // // Camera View matrix ??
     // vec3 forward = normalize(ViewProj[2].xyz);
     // vec3 up = normalize(ViewProj[1].xyz);

@@ -10,7 +10,7 @@ layout(location = 2) in vec2 Vertex_Uv;
 layout(location = 1) out vec2 v_Uv;
 #endif
 
-#ifdef GIZMOMATERIAL_LIT
+#ifndef GIZMOMATERIAL_UNLIT
 layout(location = 3) in vec3 Vertex_Normal;
 layout(location = 2) out vec3 v_Normal;
 #endif
@@ -47,14 +47,14 @@ void main() {
     gl_Position /= gl_Position.w;
     gl_Position.xy += Vertex_Position.xy * vec2(ScreenAspectRatio.x, 1.0) * BillboadSize * 0.2;
 
-#ifdef GIZMOMATERIAL_LIT
+#ifndef GIZMOMATERIAL_UNLIT
     // TODO: Transform normals
     v_Normal = Vertex_Normal;
 #endif
 #else
     gl_Position = ViewProj * vec4((Model * vec4(Vertex_Position, 1.0)).xyz, 1.0);
 
-#ifdef GIZMOMATERIAL_LIT
+#ifndef GIZMOMATERIAL_UNLIT
     v_Normal = mat3(Model) * Vertex_Normal;
 #endif
 #endif
