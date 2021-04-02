@@ -313,7 +313,7 @@ struct GizmosResources {
 }
 
 fn gizmos_setup(
-    commands: &mut Commands,
+    mut commands: Commands,
     mut gizmos: ResMut<GizmosResources>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
@@ -340,12 +340,12 @@ fn gizmos_setup(
     gizmos.meshes.mesh_capsule_cap = gizmos.meshes.mesh_hemisphere.clone();
 
     // Shared line mesh
-    gizmos.lines_volatile = Line::new(commands, meshes);
-    gizmos.lines_immediate = Line::new(commands, meshes);
+    gizmos.lines_volatile = Line::new(&mut commands, meshes);
+    gizmos.lines_immediate = Line::new(&mut commands, meshes);
 }
 
 fn gizmos_update_system(
-    commands: &mut Commands,
+    mut commands: Commands,
     time: Res<Time>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut gizmos: ResMut<GizmosResources>,
@@ -370,12 +370,12 @@ fn gizmos_update_system(
     for (entity, gizmo, children) in &mut gizmos_query.iter() {
         // Remove children
         children.iter().copied().for_each(|entity| {
-            commands.despawn(entity);
+            commands.entity(entity).despawn();
         });
 
         if gizmo.wireframe.a() > f32::EPSILON {
             gizmo_instantiate(
-                commands,
+                &mut commands,
                 &gizmos.meshes_wireframe,
                 entity,
                 gizmo.shape.clone(),
@@ -385,7 +385,7 @@ fn gizmos_update_system(
 
         if gizmo.color.a() > f32::EPSILON {
             gizmo_instantiate(
-                commands,
+                &mut commands,
                 &gizmos.meshes,
                 entity,
                 gizmo.shape.clone(),
@@ -403,7 +403,7 @@ fn gizmos_update_system(
 
         if *time_left < 0.0 {
             let (_, entity) = gizmos.shapes_volatile_tracker.remove(i);
-            commands.despawn_recursive(entity);
+            commands.entity(entity).despawn_recursive();
         } else {
             *time_left -= time.delta_seconds();
         }
@@ -494,9 +494,8 @@ fn gizmos_update_system(
             } => {
                 // Spawn gizmo
                 let entity = commands
-                    .spawn((transform, GlobalTransform::default(), Children::default()))
-                    .current_entity()
-                    .unwrap();
+                    .spawn().insert_bundle((transform, GlobalTransform::default(), Children::default()))
+                    .id();
 
                 let gizmo = Gizmo {
                     shape,
@@ -506,7 +505,7 @@ fn gizmos_update_system(
 
                 if gizmo.wireframe.a() > f32::EPSILON {
                     gizmo_instantiate(
-                        commands,
+                        &mut commands,
                         &gizmos.meshes_wireframe,
                         entity,
                         gizmo.shape.clone(),
@@ -516,7 +515,7 @@ fn gizmos_update_system(
 
                 if gizmo.color.a() > f32::EPSILON {
                     gizmo_instantiate(
-                        commands,
+                        &mut commands,
                         &gizmos.meshes,
                         entity,
                         gizmo.shape.clone(),
@@ -598,13 +597,13 @@ fn gizmo_instantiate(
     match gizmo_shape {
         GizmoShape::Empty { radius } => {
             commands
-                .spawn(GizmoMeshBundle {
+                .spawn().insert_bundle(GizmoMeshBundle {
                     transform: Transform::from_scale(Vec3::splat(radius)),
                     mesh: gizmos.mesh_empty.clone(),
                     material,
                     ..Default::default()
                 })
-                .with(Parent(parent));
+                .insert(Parent(parent));
         }
         GizmoShape::Billboard { texture, size } => {
             material.texture = texture;
@@ -613,23 +612,23 @@ fn gizmo_instantiate(
             material.billboard_size = size;
 
             commands
-                .spawn(GizmoMeshBundle {
+                .spawn().insert_bundle(GizmoMeshBundle {
                     transform: Transform::default(),
                     mesh: gizmos.mesh_billboard.clone(),
                     material,
                     ..Default::default()
                 })
-                .with(Parent(parent));
+                .insert(Parent(parent));
         }
         GizmoShape::Cube { size } => {
             commands
-                .spawn(GizmoMeshBundle {
+                .spawn().insert_bundle(GizmoMeshBundle {
                     transform: Transform::from_scale(size),
                     mesh: gizmos.mesh_cube.clone(),
                     material,
                     ..Default::default()
                 })
-                .with(Parent(parent));
+                .insert(Parent(parent));
         }
         GizmoShape::Circle { radius } => {
             let _ = radius;
@@ -637,41 +636,41 @@ fn gizmo_instantiate(
         }
         GizmoShape::Sphere { radius } => {
             commands
-                .spawn(GizmoMeshBundle {
+                .spawn().insert_bundle(GizmoMeshBundle {
                     transform: Transform::from_scale(Vec3::splat(radius)),
                     mesh: gizmos.mesh_sphere.clone(),
                     material,
                     ..Default::default()
                 })
-                .with(Parent(parent));
+                .insert(Parent(parent));
         }
         GizmoShape::Hemisphere { radius } => {
             commands
-                .spawn(GizmoMeshBundle {
+                .spawn().insert_bundle(GizmoMeshBundle {
                     transform: Transform::from_scale(Vec3::splat(radius)),
                     mesh: gizmos.mesh_hemisphere.clone(),
                     material,
                     ..Default::default()
                 })
-                .with(Parent(parent));
+                .insert(Parent(parent));
         }
         GizmoShape::Cylinder { radius, height } => {
             commands
-                .spawn(GizmoMeshBundle {
+                .spawn().insert_bundle(GizmoMeshBundle {
                     transform: Transform::from_scale(Vec3::new(radius, height, radius)),
                     mesh: gizmos.mesh_cylinder.clone(),
                     material,
                     ..Default::default()
                 })
-                .with(Parent(parent));
+                .insert(Parent(parent));
         }
         GizmoShape::Capsule {
             radius,
             height,
             axis,
         } => {
-            let mut top = Vec3::zero();
-            let mut bottom = Vec3::zero();
+            let mut top = Vec3::ZERO;
+            let mut bottom = Vec3::ZERO;
 
             let offset = height * 0.5;
             let (rotation, rotation_mirrored) = match axis {
@@ -699,7 +698,7 @@ fn gizmo_instantiate(
             };
 
             commands
-                .spawn(GizmoMeshBundle {
+                .spawn().insert_bundle(GizmoMeshBundle {
                     transform: Transform {
                         translation: top,
                         rotation,
@@ -709,11 +708,11 @@ fn gizmo_instantiate(
                     material: material.clone(),
                     ..Default::default()
                 })
-                .with(Parent(parent));
+                .insert(Parent(parent));
             commands
-                .spawn(GizmoMeshBundle {
+                .spawn().insert_bundle(GizmoMeshBundle {
                     transform: Transform {
-                        translation: Vec3::zero(),
+                        translation: Vec3::ZERO,
                         rotation,
                         scale: Vec3::new(radius, height, radius),
                     },
@@ -721,9 +720,9 @@ fn gizmo_instantiate(
                     material: material.clone(),
                     ..Default::default()
                 })
-                .with(Parent(parent));
+                .insert(Parent(parent));
             commands
-                .spawn(GizmoMeshBundle {
+                .spawn().insert_bundle(GizmoMeshBundle {
                     transform: Transform {
                         translation: bottom,
                         rotation: rotation_mirrored,
@@ -733,7 +732,7 @@ fn gizmo_instantiate(
                     material,
                     ..Default::default()
                 })
-                .with(Parent(parent));
+                .insert(Parent(parent));
         }
         GizmoShape::Mesh { mesh } => {
             // Wireframe component ?!?

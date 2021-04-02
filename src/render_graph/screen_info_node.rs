@@ -1,18 +1,12 @@
 // TODO: Move rendering and pipeline stuff here
 
-use bevy::{
-    app::ManualEventReader,
-    core::AsBytes,
-    prelude::*,
-    render::{
+use bevy::{app::{Events, ManualEventReader}, core::AsBytes, prelude::*, render::{
         render_graph::{Node, ResourceSlots},
         renderer::{
             BufferId, BufferInfo, BufferMapMode, BufferUsage, RenderContext, RenderResourceBinding,
             RenderResourceBindings,
         },
-    },
-    window::{WindowCreated, WindowId, WindowResized},
-};
+    }, window::{WindowCreated, WindowId, WindowResized}};
 
 pub const SCREEN_INFO_NODE: &str = "screen_info";
 pub const SCREEN_INFO_UNIFORM: &str = "ScreenInfo";
@@ -30,7 +24,6 @@ impl Node for ScreenInfoNode {
     fn update(
         &mut self,
         _world: &World,
-        resources: &Resources,
         render_context: &mut dyn RenderContext,
         _input: &ResourceSlots,
         _output: &mut ResourceSlots,
@@ -38,10 +31,10 @@ impl Node for ScreenInfoNode {
         const BUFFER_SIZE: usize = std::mem::size_of::<[f32; 4]>();
 
         // Fetch resources
-        let window_created_events = resources.get::<Events<WindowCreated>>().unwrap();
-        let window_resized_events = resources.get::<Events<WindowResized>>().unwrap();
-        let windows = resources.get::<Windows>().unwrap();
-        let mut render_resource_bindings = resources.get_mut::<RenderResourceBindings>().unwrap();
+        let window_created_events = _world.get_resource::<Events<WindowCreated>>().unwrap();
+        let window_resized_events = _world.get_resource::<Events<WindowResized>>().unwrap();
+        let windows = _world.get_resource::<Windows>().unwrap();
+        let mut render_resource_bindings = _world.get_resource_mut::<RenderResourceBindings>().unwrap();
 
         let window = windows.get(self.window_id).unwrap();
 

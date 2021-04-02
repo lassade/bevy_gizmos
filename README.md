@@ -21,7 +21,7 @@ fn my_system(gizmos: Res<GizmosCommandBuffer>, ...) {
 2. Immediate and Persistent Mode's
 
 ```rust
-fn startup_system(commands: &mut Commands) {
+fn startup_system(mut commands: Commands) {
     commands.spawn(PbrBundle { ... }) // The object
         .with_children(|c| c.spawn(
             GizmoBundle { // And his gizmo

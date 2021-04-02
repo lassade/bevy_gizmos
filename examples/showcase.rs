@@ -70,7 +70,7 @@ fn main() {
         .run();
 }
 
-fn setup(commands: &mut Commands) {
+fn setup(mut commands: Commands) {
     commands
         .spawn(LightBundle {
             transform: Transform::from_xyz(4.0, 8.0, 4.0),
@@ -83,7 +83,7 @@ fn setup(commands: &mut Commands) {
         .with(FlyCam);
 }
 
-fn persistent_gizmos(commands: &mut Commands) {
+fn persistent_gizmos(mut commands: Commands) {
     commands.spawn(GizmoBundle {
         transform: Transform::from_xyz(-4.0, 1.5, 0.0),
         gizmo: Gizmo {

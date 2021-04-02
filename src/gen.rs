@@ -329,7 +329,7 @@ pub fn empty() -> Mesh {
 }
 
 pub fn billboard() -> Mesh {
-    let mut mesh = Mesh::from(shape::Quad::new(Vec2::one()));
+    let mut mesh = Mesh::from(shape::Quad::new(Vec2::ONE));
 
     // Add vertex color (required by shader)
     mesh.set_attribute(Mesh::ATTRIBUTE_COLOR, {
