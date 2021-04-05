@@ -22,13 +22,13 @@ impl Line {
         };
 
         Self {
-            entity: commands
-                .spawn(GizmoMeshBundle {
+            entity: Some(commands
+                .spawn().insert_bundle(GizmoMeshBundle {
                     mesh: mesh_handle.clone(),
                     material: Color::WHITE.into(),
                     ..Default::default()
                 })
-                .current_entity(),
+                .id()),
             mesh_handle,
         }
     }
