@@ -98,7 +98,7 @@ pub(crate) fn gizmos_pipeline_setup(
         .add_node_edge("gizmo_material", base::node::MAIN_PASS)
         .unwrap();
 
-    render_graph.add_node(
+    render_graph.add_system_node(
         screen_info_node::SCREEN_INFO_NODE,
         screen_info_node::ScreenInfoNode::default(),
     );
