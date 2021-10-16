@@ -48,7 +48,7 @@ fn main() {
     //     ),
     // };
 
-    App::build()
+    App::new()
         // .insert_resource(animation_resource)
         .add_plugins(DefaultPlugins) // Default Bevy plugins.
         .add_plugin(GizmosPlugin)
@@ -65,7 +65,7 @@ fn main() {
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn().insert_bundle(LightBundle {
+    commands.spawn().insert_bundle(PointLightBundle {
         transform: Transform::from_xyz(4.0, 8.0, 4.0),
         ..Default::default()
     });

@@ -494,7 +494,8 @@ fn gizmos_update_system(
             } => {
                 // Spawn gizmo
                 let entity = commands
-                    .spawn().insert_bundle((transform, GlobalTransform::default(), Children::default()))
+                    .spawn()
+                    .insert_bundle((transform, GlobalTransform::default(), Children::default()))
                     .id();
 
                 let gizmo = Gizmo {
@@ -597,7 +598,8 @@ fn gizmo_instantiate(
     match gizmo_shape {
         GizmoShape::Empty { radius } => {
             commands
-                .spawn().insert_bundle(GizmoMeshBundle {
+                .spawn()
+                .insert_bundle(GizmoMeshBundle {
                     transform: Transform::from_scale(Vec3::splat(radius)),
                     mesh: gizmos.mesh_empty.clone(),
                     material,
@@ -612,7 +614,8 @@ fn gizmo_instantiate(
             material.billboard_size = size;
 
             commands
-                .spawn().insert_bundle(GizmoMeshBundle {
+                .spawn()
+                .insert_bundle(GizmoMeshBundle {
                     transform: Transform::default(),
                     mesh: gizmos.mesh_billboard.clone(),
                     material,
@@ -622,7 +625,8 @@ fn gizmo_instantiate(
         }
         GizmoShape::Cube { size } => {
             commands
-                .spawn().insert_bundle(GizmoMeshBundle {
+                .spawn()
+                .insert_bundle(GizmoMeshBundle {
                     transform: Transform::from_scale(size),
                     mesh: gizmos.mesh_cube.clone(),
                     material,
@@ -636,7 +640,8 @@ fn gizmo_instantiate(
         }
         GizmoShape::Sphere { radius } => {
             commands
-                .spawn().insert_bundle(GizmoMeshBundle {
+                .spawn()
+                .insert_bundle(GizmoMeshBundle {
                     transform: Transform::from_scale(Vec3::splat(radius)),
                     mesh: gizmos.mesh_sphere.clone(),
                     material,
@@ -646,7 +651,8 @@ fn gizmo_instantiate(
         }
         GizmoShape::Hemisphere { radius } => {
             commands
-                .spawn().insert_bundle(GizmoMeshBundle {
+                .spawn()
+                .insert_bundle(GizmoMeshBundle {
                     transform: Transform::from_scale(Vec3::splat(radius)),
                     mesh: gizmos.mesh_hemisphere.clone(),
                     material,
@@ -656,7 +662,8 @@ fn gizmo_instantiate(
         }
         GizmoShape::Cylinder { radius, height } => {
             commands
-                .spawn().insert_bundle(GizmoMeshBundle {
+                .spawn()
+                .insert_bundle(GizmoMeshBundle {
                     transform: Transform::from_scale(Vec3::new(radius, height, radius)),
                     mesh: gizmos.mesh_cylinder.clone(),
                     material,
@@ -679,7 +686,7 @@ fn gizmo_instantiate(
                     bottom[0] = offset;
                     (
                         Quat::from_rotation_z(PI * 0.5),
-                        Quat::from_rotation_ypr(PI, 0.0, PI * 0.5),
+                        Quat::from_euler(bevy::math::EulerRot::YXZ, PI, 0.0, PI * 0.5),
                     )
                 }
                 Axis::Y => {
@@ -692,13 +699,14 @@ fn gizmo_instantiate(
                     bottom[2] = -offset;
                     (
                         Quat::from_rotation_x(PI * 0.5),
-                        Quat::from_rotation_ypr(0.0, PI * 0.5, PI),
+                        Quat::from_euler(bevy::math::EulerRot::YXZ, 0.0, PI * 0.5, PI),
                     )
                 }
             };
 
             commands
-                .spawn().insert_bundle(GizmoMeshBundle {
+                .spawn()
+                .insert_bundle(GizmoMeshBundle {
                     transform: Transform {
                         translation: top,
                         rotation,
@@ -710,7 +718,8 @@ fn gizmo_instantiate(
                 })
                 .insert(Parent(parent));
             commands
-                .spawn().insert_bundle(GizmoMeshBundle {
+                .spawn()
+                .insert_bundle(GizmoMeshBundle {
                     transform: Transform {
                         translation: Vec3::ZERO,
                         rotation,
@@ -722,7 +731,8 @@ fn gizmo_instantiate(
                 })
                 .insert(Parent(parent));
             commands
-                .spawn().insert_bundle(GizmoMeshBundle {
+                .spawn()
+                .insert_bundle(GizmoMeshBundle {
                     transform: Transform {
                         translation: bottom,
                         rotation: rotation_mirrored,
@@ -755,7 +765,7 @@ pub enum GizmoStage {
 pub struct GizmosPlugin;
 
 impl Plugin for GizmosPlugin {
-    fn build(&self, app: &mut AppBuilder) {
+    fn build(&self, app: &mut App) {
         app.add_stage_after(
             CoreStage::Update,
             GizmoStage::Update,
