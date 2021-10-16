@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use bevy_gizmos::{Axis, *};
 use smallvec::SmallVec;
 
+#[derive(Component)]
 struct AnimationTime {
     time: f32,
     speed: f32,

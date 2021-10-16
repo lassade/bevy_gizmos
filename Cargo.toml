@@ -12,7 +12,3 @@ smallvec = "1.6.1"
 
 [[example]]
 name = "showcase"
-
-[patch.'https://github.com/bevyengine/bevy']
-#bevy = {git = "https://github.com/bevyengine/bevy?branch=main", rev = "5ba2b9adcf5e686273cf024acf1ad8ddfb4f8e18"}
-bevy = {path = "../bevy"}

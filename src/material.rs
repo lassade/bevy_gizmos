@@ -3,7 +3,7 @@ use bevy::{
     render::{renderer::RenderResources, shader::ShaderDefs},
 };
 
-#[derive(Debug, Clone, Reflect, RenderResources, ShaderDefs)]
+#[derive(Debug, Clone, Reflect, RenderResources, ShaderDefs, Component)]
 #[reflect(Component)]
 pub struct GizmoMaterial {
     pub color: Color,

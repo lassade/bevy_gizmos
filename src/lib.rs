@@ -68,7 +68,7 @@ pub enum GizmoShape {
 /// **NOTE** Removing this component won't remove the gizmos, thus
 /// use the `GizmoBundle` to spawn a new gizmo as a child of the entity you want
 /// to put the gizmo on;
-#[derive(Debug, Reflect)]
+#[derive(Debug, Reflect, Component)]
 #[reflect(Component)]
 pub struct Gizmo {
     #[reflect(ignore)]
