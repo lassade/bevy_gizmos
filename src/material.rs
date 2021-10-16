@@ -19,6 +19,7 @@ pub struct GizmoMaterial {
     #[shader_def]
     #[render_resources(ignore)]
     pub billboard: bool,
+
     pub billboard_size: f32,
 }
 

@@ -77,7 +77,7 @@ fn setup(mut commands: Commands) {
     //.insert(FlyCam);
 }
 
-fn persistent_gizmos(mut commands: Commands) {
+fn persistent_gizmos(mut commands: Commands, assets: Res<AssetServer>) {
     commands.spawn().insert_bundle(GizmoBundle {
         transform: Transform::from_xyz(-4.0, 1.5, 0.0),
         gizmo: Gizmo {
@@ -92,7 +92,7 @@ fn persistent_gizmos(mut commands: Commands) {
         transform: Transform::from_xyz(-2.0, 1.5, 0.0),
         gizmo: Gizmo {
             shape: GizmoShape::Billboard {
-                texture: None,
+                texture: Some(assets.load("bevy.png")),
                 size: 0.5,
             },
             wireframe: Color::WHITE, // Billboard doesn't have a gizmo
