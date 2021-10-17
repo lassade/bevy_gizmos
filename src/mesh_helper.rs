@@ -53,9 +53,13 @@ impl<'a> From<&'a mut Mesh> for MeshEditXC<'a> {
                 vertices: mesh_attr!(
                     mesh,
                     Mesh::ATTRIBUTE_POSITION,
-                    VertexAttributeValues::Float3
+                    VertexAttributeValues::Float32x3
                 ),
-                colors: mesh_attr!(mesh, Mesh::ATTRIBUTE_COLOR, VertexAttributeValues::Float4),
+                colors: mesh_attr!(
+                    mesh,
+                    Mesh::ATTRIBUTE_COLOR,
+                    VertexAttributeValues::Float32x4
+                ),
                 indices: if let Some(Indices::U32(buffer)) = mesh.indices_mut() {
                     &mut *(buffer as *mut _)
                 } else {

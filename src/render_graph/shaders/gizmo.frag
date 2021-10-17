@@ -35,7 +35,7 @@ void main() {
 
 #ifdef GIZMOMATERIAL_TEXTURE
     o *= texture(
-        sampler2D(StandardMaterial_albedo_texture, StandardMaterial_albedo_texture_sampler),
+        sampler2D(GizmoMaterial_texture, GizmoMaterial_texture_sampler),
         v_Uv);
 #endif
 

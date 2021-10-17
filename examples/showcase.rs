@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use bevy_gizmos::{Axis, *};
 use smallvec::SmallVec;
 
+#[derive(Component)]
 struct AnimationTime {
     time: f32,
     speed: f32,
@@ -48,7 +49,7 @@ fn main() {
     //     ),
     // };
 
-    App::build()
+    App::new()
         // .insert_resource(animation_resource)
         .add_plugins(DefaultPlugins) // Default Bevy plugins.
         .add_plugin(GizmosPlugin)
@@ -65,7 +66,7 @@ fn main() {
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn().insert_bundle(LightBundle {
+    commands.spawn().insert_bundle(PointLightBundle {
         transform: Transform::from_xyz(4.0, 8.0, 4.0),
         ..Default::default()
     });
@@ -77,7 +78,7 @@ fn setup(mut commands: Commands) {
     //.insert(FlyCam);
 }
 
-fn persistent_gizmos(mut commands: Commands) {
+fn persistent_gizmos(mut commands: Commands, assets: Res<AssetServer>) {
     commands.spawn().insert_bundle(GizmoBundle {
         transform: Transform::from_xyz(-4.0, 1.5, 0.0),
         gizmo: Gizmo {
@@ -92,7 +93,7 @@ fn persistent_gizmos(mut commands: Commands) {
         transform: Transform::from_xyz(-2.0, 1.5, 0.0),
         gizmo: Gizmo {
             shape: GizmoShape::Billboard {
-                texture: None,
+                texture: Some(assets.load("bevy.png")),
                 size: 0.5,
             },
             wireframe: Color::WHITE, // Billboard doesn't have a gizmo

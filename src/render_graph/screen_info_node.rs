@@ -2,14 +2,13 @@
 
 use bevy::{
     app::{Events, ManualEventReader},
-    core::AsBytes,
     ecs::system::BoxedSystem,
     prelude::*,
     render::{
         render_graph::{CommandQueue, Node, ResourceSlots, SystemNode},
         renderer::{
-            BufferId, BufferInfo, BufferMapMode, BufferUsage, RenderContext, RenderResourceBinding,
-            RenderResourceBindings, RenderResourceContext,
+            BufferId, BufferInfo, BufferMapMode, BufferUsage, RenderContext, RenderResource,
+            RenderResourceBinding, RenderResourceBindings, RenderResourceContext,
         },
     },
     window::{WindowCreated, WindowId, WindowResized},
@@ -121,7 +120,7 @@ pub fn lights_node_system(
             staging_buffer,
             0..BUFFER_SIZE as u64,
             &mut |data, _renderer| {
-                data[0..BUFFER_SIZE].copy_from_slice(screen_info.as_bytes());
+                screen_info.write_buffer_bytes(&mut data[0..BUFFER_SIZE]);
             },
         );
         render_resource_context.unmap_buffer(staging_buffer);

@@ -1,18 +1,14 @@
 [package]
-name = "bevy_gizmos"
-version = "0.5.0"
 authors = ["Felipe Jorge <felipe.jorge.pereira@gmail.com>"]
 edition = "2018"
+name = "bevy_gizmos"
+version = "0.6.0"
 
 [dependencies]
-# TODO: Limit the crates dependencies (mainly to reduce compile times)
-bevy={git="https://github.com/bevyengine/bevy", branch="main"}
+bevy = {git = "https://github.com/bevyengine/bevy", branch = "main"}
 
-smallvec = "1.6.1"
 crossbeam = "0.8.0"
-
-[dev-dependencies] 
-# bevy_flycam = { path = "../bevy_flycam" }
+smallvec = "1.6.1"
 
 [[example]]
 name = "showcase"

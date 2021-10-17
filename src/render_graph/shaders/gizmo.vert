@@ -29,7 +29,7 @@ layout(set = 2, binding = 0) uniform ScreenInfo {
 };
 
 #ifdef GIZMOMATERIAL_BILLBOARD
-layout(set = 3, binding = 1) uniform GizmoMaterial_billboard_size {
+layout(set = 3, binding = 4) uniform GizmoMaterial_billboard_size {
     float BillboadSize;
 };
 #endif
